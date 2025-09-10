@@ -59,10 +59,7 @@ pub fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()> {
     // Area of the framebuffer that fragments are allowed to affect. In our case the whole area.
     let scissor = vk::Rect2D::builder()
         .offset(vk::Offset2D { x: 0, y: 0 })
-        .extent(vk::Extent2D {
-            width: data.swapchain_extent.width / 2,
-            height: data.swapchain_extent.height / 2,
-        });
+        .extent(data.swapchain_extent);
 
     let viewports = &[viewport];
     let scissors = &[scissor];
