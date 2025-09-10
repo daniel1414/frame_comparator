@@ -1,0 +1,3 @@
+[submodule "frame_comp"]
+	path = frame_comp
+	url = git@github.com:daniel1414/frame_comp.git
