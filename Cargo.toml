@@ -3,3 +3,4 @@ members = [
     "frame_comp",
     "frame_comp_app"
 ]
+resolver = "3"
