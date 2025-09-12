@@ -8,6 +8,7 @@ use vk::{KhrSurfaceExtension, KhrSwapchainExtension};
 use vulkanalia::loader::{LIBRARY, LibloadingLoader};
 use vulkanalia::prelude::v1_3::*;
 use vulkanalia::vk::ExtDebugUtilsExtension;
+use winit::dpi::{LogicalSize, PhysicalSize};
 
 use vulkanalia::Version;
 use vulkanalia::window as vk_window;
@@ -59,6 +60,10 @@ impl App {
         let loader = unsafe { LibloadingLoader::new(LIBRARY) }?;
         let entry = unsafe { Entry::new(loader).map_err(|b| anyhow!("{}", b)) }?;
         let mut data = AppData::default();
+
+        data.window_size = window.inner_size();
+        data.vbar_percentage = 0.5;
+
         let instance = create_instance(window, &entry, &mut data)?;
         data.surface = unsafe { vk_window::create_surface(&instance, &window, &window) }?;
         pick_physical_device(&instance, &mut data)?;
@@ -537,4 +542,7 @@ pub struct AppData {
     pub color_image: vk::Image,
     pub color_image_memory: vk::DeviceMemory,
     pub color_image_view: vk::ImageView,
+
+    pub window_size: PhysicalSize<u32>,
+    pub vbar_percentage: f64,
 }

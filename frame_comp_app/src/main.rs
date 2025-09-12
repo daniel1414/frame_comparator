@@ -12,7 +12,7 @@ use anyhow::Result;
 use app::App;
 use frame_comp;
 use vulkanalia::prelude::v1_3::*;
-use winit::dpi::LogicalSize;
+use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
@@ -27,9 +27,12 @@ fn main() -> Result<()> {
         .with_inner_size(LogicalSize::new(1024, 768))
         .build(&event_loop)?;
 
+    let window_size = window.inner_size();
+
     // Vulkan App
     let mut app = App::create(&window)?;
     let mut minimized = false;
+
     event_loop.run(move |event, elwt| {
         match event {
             // Request a redraw when all events were processed.
@@ -58,6 +61,27 @@ fn main() -> Result<()> {
                             minimized = false;
                             app.resized = true;
                         }
+                    }
+                    WindowEvent::CursorMoved {
+                        device_id,
+                        position,
+                    } => {
+                        dbg!(position.x);
+                        dbg!(window_size.width);
+                        if position.x < window_size.width as f64 - 10.0 {
+                            app.data.vbar_percentage = position.x / window_size.width as f64;
+                            // Hack to temporarily recreate the swapchain (TODO: re-record the command buffers only)
+                            app.resized = true;
+                        }
+                    }
+                    WindowEvent::MouseInput {
+                        device_id,
+                        state,
+                        button,
+                    } => {
+                        dbg!(device_id);
+                        dbg!(state);
+                        dbg!(button);
                     }
                     WindowEvent::DroppedFile(buf) => {
                         println!("{}", buf.display());

@@ -61,7 +61,7 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
     let alloc_info = vk::CommandBufferAllocateInfo::builder()
         .command_pool(data.command_pool)
         .level(vk::CommandBufferLevel::PRIMARY)
-        .command_buffer_count(data.left_framebuffers.len() as u32);
+        .command_buffer_count(data.swapchain_image_views.len() as u32);
 
     data.command_buffers = unsafe { device.allocate_command_buffers(&alloc_info) }?;
 
@@ -72,22 +72,26 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
             .flags(vk::CommandBufferUsageFlags::empty())
             .inheritance_info(&inheritance);
 
-        let vbar_width: u32 = 10;
+        let vbar_width: u32 = 4;
+        let left_width = (data.window_size.width as f64 * data.vbar_percentage) as u32;
+
+        dbg!(left_width);
+        dbg!(data.window_size);
 
         let left_render_area = vk::Rect2D::builder()
             .offset(vk::Offset2D::default())
             .extent(vk::Extent2D {
-                width: data.swapchain_extent.width / 2 - vbar_width / 2,
+                width: left_width,
                 height: data.swapchain_extent.height,
             });
 
         let right_render_area = vk::Rect2D::builder()
             .offset(vk::Offset2D {
-                x: (data.swapchain_extent.width / 2 + vbar_width / 2) as i32,
+                x: (left_width + vbar_width) as i32,
                 y: 0,
             })
             .extent(vk::Extent2D {
-                width: data.swapchain_extent.width / 2 - vbar_width / 2,
+                width: data.window_size.width - left_width - vbar_width,
                 height: data.swapchain_extent.height,
             });
 
