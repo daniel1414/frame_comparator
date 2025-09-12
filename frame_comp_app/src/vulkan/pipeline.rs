@@ -20,7 +20,11 @@ use super::vertex::Vertex;
 ///
 /// Must output data to the color attachment in the right format (same as in the render pass
 /// and swapchain).
-pub fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()> {
+pub fn create_pipeline(
+    device: &Device,
+    data: &AppData,
+    render_pass: &vk::RenderPass,
+) -> Result<(vk::PipelineLayout, vk::Pipeline)> {
     let vert = include_bytes!("shaders/vert.spv");
     let frag = include_bytes!("shaders/frag.spv");
 
@@ -110,7 +114,7 @@ pub fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()> {
     let set_layouts = &[data.descriptor_set_layout];
     let layout_info = vk::PipelineLayoutCreateInfo::builder().set_layouts(set_layouts);
 
-    data.pipeline_layout = unsafe { device.create_pipeline_layout(&layout_info, None) }?;
+    let pipeline_layout = unsafe { device.create_pipeline_layout(&layout_info, None) }?;
 
     let depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo::builder()
         // Specifies if the depth of new fragments should be compared to the depth buffer
@@ -140,23 +144,24 @@ pub fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()> {
         .rasterization_state(&rasterization_state)
         .multisample_state(&multisample_state)
         .color_blend_state(&color_blend_state)
-        .layout(data.pipeline_layout)
+        .layout(pipeline_layout)
         .depth_stencil_state(&depth_stencil_state)
         // Link this pipeline to the correct render pass.
-        .render_pass(data.render_pass)
+        .render_pass(*render_pass)
         // And the right subpass.
         .subpass(0);
 
-    unsafe {
-        data.pipeline = device
+    let pipeline = unsafe {
+        let pipeline = device
             .create_graphics_pipelines(vk::PipelineCache::null(), &[info], None)?
             .0[0];
 
         device.destroy_shader_module(vert_module, None);
         device.destroy_shader_module(frag_module, None);
-    }
+        pipeline
+    };
 
-    Ok(())
+    Ok((pipeline_layout, pipeline))
 }
 
 fn create_shader_module(device: &Device, bytecode: &[u8]) -> Result<vk::ShaderModule> {

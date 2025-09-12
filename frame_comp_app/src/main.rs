@@ -19,7 +19,6 @@ use winit::window::WindowBuilder;
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
-    frame_comp::add(2, 3);
 
     // Window
     let event_loop = EventLoop::new()?;

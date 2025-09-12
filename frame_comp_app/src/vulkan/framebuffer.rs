@@ -13,14 +13,18 @@ use vulkanalia::prelude::v1_3::*;
 /// for the attachments.
 ///
 /// Complexities arise due to compatibility requirements, resizing, multisampling, and synchronization.
-pub fn create_framebuffers(device: &Device, data: &mut AppData) -> Result<()> {
-    data.framebuffers = data
+pub fn create_framebuffers(
+    device: &Device,
+    data: &AppData,
+    render_pass: &vk::RenderPass,
+) -> Result<Vec<vk::Framebuffer>> {
+    let fb = data
         .swapchain_image_views
         .iter()
         .map(|i| {
             let attachments = &[data.color_image_view, data.depth_image_view, *i];
             let create_info = vk::FramebufferCreateInfo::builder()
-                .render_pass(data.render_pass)
+                .render_pass(*render_pass)
                 // Each attachment corresponds to one of the attachments
                 // defined in the render pass. In this case the color attachment.
                 // Multiple attachments allow for advanced techniques like deffered shading and post-processing.
@@ -36,5 +40,5 @@ pub fn create_framebuffers(device: &Device, data: &mut AppData) -> Result<()> {
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(())
+    Ok(fb)
 }

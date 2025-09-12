@@ -11,7 +11,11 @@ use super::buffers::depth_buffer::get_depth_format;
 ///
 /// Image views created for the swapchain images are the resources that will be
 /// attached to the render pass during rendering.
-pub fn create_render_pass(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
+pub fn create_render_pass(
+    instance: &Instance,
+    device: &Device,
+    data: &mut AppData,
+) -> Result<vk::RenderPass> {
     let color_attachment = vk::AttachmentDescription::builder()
         // Format of the color attachment should be same as the swapchain images.
         .format(data.swapchain_format)
@@ -128,7 +132,5 @@ pub fn create_render_pass(instance: &Instance, device: &Device, data: &mut AppDa
         .subpasses(subpasses)
         .dependencies(dependencies);
 
-    data.render_pass = unsafe { device.create_render_pass(&info, None) }?;
-
-    Ok(())
+    Ok(unsafe { device.create_render_pass(&info, None) }?)
 }

@@ -61,7 +61,7 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
     let alloc_info = vk::CommandBufferAllocateInfo::builder()
         .command_pool(data.command_pool)
         .level(vk::CommandBufferLevel::PRIMARY)
-        .command_buffer_count(data.framebuffers.len() as u32);
+        .command_buffer_count(data.left_framebuffers.len() as u32);
 
     data.command_buffers = unsafe { device.allocate_command_buffers(&alloc_info) }?;
 
@@ -72,9 +72,24 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
             .flags(vk::CommandBufferUsageFlags::empty())
             .inheritance_info(&inheritance);
 
-        let render_area = vk::Rect2D::builder()
+        let vbar_width: u32 = 10;
+
+        let left_render_area = vk::Rect2D::builder()
             .offset(vk::Offset2D::default())
-            .extent(data.swapchain_extent);
+            .extent(vk::Extent2D {
+                width: data.swapchain_extent.width / 2 - vbar_width / 2,
+                height: data.swapchain_extent.height,
+            });
+
+        let right_render_area = vk::Rect2D::builder()
+            .offset(vk::Offset2D {
+                x: (data.swapchain_extent.width / 2 + vbar_width / 2) as i32,
+                y: 0,
+            })
+            .extent(vk::Extent2D {
+                width: data.swapchain_extent.width / 2 - vbar_width / 2,
+                height: data.swapchain_extent.height,
+            });
 
         let color_clear_value = vk::ClearValue {
             color: vk::ClearColorValue {
@@ -91,46 +106,70 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
 
         // The order of clear values should be identical to the order of attachments.
         let clear_values = &[color_clear_value, depth_clear_value];
-        let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-            .render_pass(data.render_pass)
-            .framebuffer(data.framebuffers[i])
-            .render_area(render_area)
+        let left_render_pass_begin_info = vk::RenderPassBeginInfo::builder()
+            .render_pass(data.render_pass[0])
+            .framebuffer(data.left_framebuffers[i])
+            .render_area(left_render_area)
             .clear_values(clear_values);
+
+        let right_render_pass_begin_info = vk::RenderPassBeginInfo::builder()
+            .render_pass(data.render_pass[1])
+            .framebuffer(data.right_framebuffers[i])
+            .render_area(right_render_area)
+            .clear_values(clear_values);
+
+        let loop_data = &[
+            (
+                left_render_pass_begin_info,
+                data.left_pipeline_layout,
+                data.left_pipeline,
+            ),
+            (
+                right_render_pass_begin_info,
+                data.right_pipeline_layout,
+                data.right_pipeline,
+            ),
+        ];
 
         unsafe {
             device.begin_command_buffer(*command_buffer, &info)?;
-            device.cmd_begin_render_pass(
-                *command_buffer,
-                &render_pass_begin_info,
-                vk::SubpassContents::INLINE,
-            );
 
-            // The command buffer tracks state changes (e.g., pipeline bindings) and
-            // ensures dependencies are managed correctly.
-            // The pipeline is meant to operate on attachments and the render pass describes them
-            // so the pipeline needs to be bound only after the render pass begins.
-            device.cmd_bind_pipeline(
-                *command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                data.pipeline,
-            );
-            device.cmd_bind_vertex_buffers(*command_buffer, 0, &[data.vertex_buffer], &[0]);
-            device.cmd_bind_index_buffer(
-                *command_buffer,
-                data.index_buffer,
-                0,
-                vk::IndexType::UINT32,
-            );
-            device.cmd_bind_descriptor_sets(
-                *command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                data.pipeline_layout,
-                0,
-                &[data.descriptor_sets[i]],
-                &[],
-            );
-            device.cmd_draw_indexed(*command_buffer, data.indices.len() as u32, 1, 0, 0, 0);
-            device.cmd_end_render_pass(*command_buffer);
+            for (render_pass_begin_info, pipeline_layout, pipeline) in loop_data {
+                // Render pass for the left half of the image.
+                device.cmd_begin_render_pass(
+                    *command_buffer,
+                    &render_pass_begin_info,
+                    vk::SubpassContents::INLINE,
+                );
+
+                // The command buffer tracks state changes (e.g., pipeline bindings) and
+                // ensures dependencies are managed correctly.
+                // The pipeline is meant to operate on attachments and the render pass describes them
+                // so the pipeline needs to be bound only after the render pass begins.
+                device.cmd_bind_pipeline(
+                    *command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    *pipeline,
+                );
+                device.cmd_bind_vertex_buffers(*command_buffer, 0, &[data.vertex_buffer], &[0]);
+                device.cmd_bind_index_buffer(
+                    *command_buffer,
+                    data.index_buffer,
+                    0,
+                    vk::IndexType::UINT32,
+                );
+                device.cmd_bind_descriptor_sets(
+                    *command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    *pipeline_layout,
+                    0,
+                    &[data.descriptor_sets[i]],
+                    &[],
+                );
+                device.cmd_draw_indexed(*command_buffer, data.indices.len() as u32, 1, 0, 0, 0);
+                device.cmd_end_render_pass(*command_buffer);
+            }
+
             device.end_command_buffer(*command_buffer)?;
         }
     }

@@ -65,13 +65,26 @@ impl App {
         let device = create_logical_device(&entry, &instance, &mut data)?;
         create_swapchain(window, &instance, &device, &mut data)?;
         create_swapchain_image_views(&device, &mut data)?;
-        create_render_pass(&instance, &device, &mut data)?;
+
+        data.render_pass[0] = create_render_pass(&instance, &device, &mut data)?;
+        data.render_pass[1] = create_render_pass(&instance, &device, &mut data)?;
+
         create_descriptor_set_layout(&device, &mut data)?;
-        create_pipeline(&device, &mut data)?;
+
+        // One pipeline per render pass
+        (data.left_pipeline_layout, data.left_pipeline) =
+            create_pipeline(&device, &data, &data.render_pass[0])?;
+
+        (data.right_pipeline_layout, data.right_pipeline) =
+            create_pipeline(&device, &data, &data.render_pass[1])?;
+
         create_command_pool(&instance, &device, &mut data)?;
         create_color_objects(&instance, &device, &mut data)?;
         create_depth_objects(&instance, &device, &mut data)?;
-        create_framebuffers(&device, &mut data)?;
+
+        data.left_framebuffers = create_framebuffers(&device, &data, &data.render_pass[0])?;
+        data.right_framebuffers = create_framebuffers(&device, &data, &data.render_pass[1])?;
+
         create_texture_image(&instance, &device, &mut data)?;
         create_texture_image_view(&device, &mut data)?;
         create_texture_sampler(&device, &mut data)?;
@@ -104,11 +117,27 @@ impl App {
 
         create_swapchain(window, &self.instance, &self.device, &mut self.data)?;
         create_swapchain_image_views(&self.device, &mut self.data)?;
-        create_render_pass(&self.instance, &self.device, &mut self.data)?;
-        create_pipeline(&self.device, &mut self.data)?;
+
+        self.data.render_pass[0] =
+            create_render_pass(&self.instance, &self.device, &mut self.data)?;
+        self.data.render_pass[1] =
+            create_render_pass(&self.instance, &self.device, &mut self.data)?;
+
+        (self.data.left_pipeline_layout, self.data.left_pipeline) =
+            create_pipeline(&self.device, &self.data, &self.data.render_pass[0])?;
+
+        (self.data.right_pipeline_layout, self.data.right_pipeline) =
+            create_pipeline(&self.device, &self.data, &self.data.render_pass[1])?;
+
         create_color_objects(&self.instance, &self.device, &mut self.data)?;
         create_depth_objects(&self.instance, &self.device, &mut self.data)?;
-        create_framebuffers(&self.device, &mut self.data)?;
+
+        self.data.left_framebuffers =
+            create_framebuffers(&self.device, &self.data, &self.data.render_pass[0])?;
+
+        self.data.right_framebuffers =
+            create_framebuffers(&self.device, &self.data, &self.data.render_pass[1])?;
+
         create_uniform_buffers(&self.instance, &self.device, &mut self.data)?;
         create_descriptor_pool(&self.device, &mut self.data)?;
         create_descriptor_sets(&self.device, &mut self.data)?;
@@ -189,13 +218,28 @@ impl App {
                 .free_command_buffers(self.data.command_pool, &self.data.command_buffers);
 
             self.data
-                .framebuffers
+                .left_framebuffers
                 .iter()
                 .for_each(|f| self.device.destroy_framebuffer(*f, None));
-            self.device.destroy_pipeline(self.data.pipeline, None);
+
+            self.data
+                .right_framebuffers
+                .iter()
+                .for_each(|f| self.device.destroy_framebuffer(*f, None));
+
+            self.device.destroy_pipeline(self.data.left_pipeline, None);
+            self.device.destroy_pipeline(self.data.right_pipeline, None);
+
             self.device
-                .destroy_pipeline_layout(self.data.pipeline_layout, None);
-            self.device.destroy_render_pass(self.data.render_pass, None);
+                .destroy_pipeline_layout(self.data.left_pipeline_layout, None);
+            self.device
+                .destroy_pipeline_layout(self.data.right_pipeline_layout, None);
+
+            self.device
+                .destroy_render_pass(self.data.render_pass[0], None);
+            self.device
+                .destroy_render_pass(self.data.render_pass[1], None);
+
             self.data
                 .swapchain_image_views
                 .iter()
@@ -426,13 +470,17 @@ pub struct AppData {
     pub swapchain: vk::SwapchainKHR,
     pub swapchain_images: Vec<vk::Image>,
     pub swapchain_image_views: Vec<vk::ImageView>,
-    pub render_pass: vk::RenderPass,
+    // 0 for the left side, 1 for the right side
+    pub render_pass: [vk::RenderPass; 2],
 
-    /// The layoud of the descriptor set for the UBO that holds the MVP matrix.
+    /// The layout of the descriptor set for the UBO that holds the MVP matrix.
     pub descriptor_set_layout: vk::DescriptorSetLayout,
-    pub pipeline_layout: vk::PipelineLayout,
-    pub pipeline: vk::Pipeline,
-    pub framebuffers: Vec<vk::Framebuffer>,
+    pub left_pipeline_layout: vk::PipelineLayout,
+    pub right_pipeline_layout: vk::PipelineLayout,
+    pub left_pipeline: vk::Pipeline,
+    pub right_pipeline: vk::Pipeline,
+    pub left_framebuffers: Vec<vk::Framebuffer>,
+    pub right_framebuffers: Vec<vk::Framebuffer>,
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
 
