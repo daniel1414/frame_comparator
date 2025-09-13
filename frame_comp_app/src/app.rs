@@ -8,7 +8,7 @@ use vk::{KhrSurfaceExtension, KhrSwapchainExtension};
 use vulkanalia::loader::{LIBRARY, LibloadingLoader};
 use vulkanalia::prelude::v1_3::*;
 use vulkanalia::vk::ExtDebugUtilsExtension;
-use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::dpi::PhysicalSize;
 
 use vulkanalia::Version;
 use vulkanalia::window as vk_window;

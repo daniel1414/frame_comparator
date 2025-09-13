@@ -10,9 +10,8 @@ mod vulkan;
 
 use anyhow::Result;
 use app::App;
-use frame_comp;
 use vulkanalia::prelude::v1_3::*;
-use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
+use winit::dpi::LogicalSize;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
@@ -68,7 +67,8 @@ fn main() -> Result<()> {
                     } => {
                         dbg!(position.x);
                         dbg!(window_size.width);
-                        if position.x < window_size.width as f64 - 10.0 {
+                        if position.x < window_size.width as f64 - 10.0 &&
+                            position.x > 10.0 {
                             app.data.vbar_percentage = position.x / window_size.width as f64;
                             // Hack to temporarily recreate the swapchain (TODO: re-record the command buffers only)
                             app.resized = true;
