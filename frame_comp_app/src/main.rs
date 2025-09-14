@@ -12,7 +12,7 @@ use anyhow::Result;
 use app::App;
 use vulkanalia::prelude::v1_3::*;
 use winit::dpi::LogicalSize;
-use winit::event::{Event, WindowEvent};
+use winit::event::{Event, MouseButton, WindowEvent};
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
 
@@ -31,8 +31,16 @@ fn main() -> Result<()> {
     // Vulkan App
     let mut app = App::create(&window)?;
     let mut minimized = false;
+    let mut left_mouse_pressed = false;
+    let mut mouse_x: f64 = (window.inner_size().width / 2) as f64;
 
     event_loop.run(move |event, elwt| {
+        let check_and_update_app = |mouse: f64, mouse_pressed: bool, app: &mut App| {
+            if mouse_pressed && mouse < window_size.width as f64 - 10.0 && mouse > 10.0 {
+                app.data.vbar_percentage = mouse / window_size.width as f64;
+                app.resized = true;
+            }
+        };
         match event {
             // Request a redraw when all events were processed.
             Event::AboutToWait => window.request_redraw(),
@@ -65,23 +73,16 @@ fn main() -> Result<()> {
                         device_id,
                         position,
                     } => {
-                        dbg!(position.x);
-                        dbg!(window_size.width);
-                        if position.x < window_size.width as f64 - 10.0 &&
-                            position.x > 10.0 {
-                            app.data.vbar_percentage = position.x / window_size.width as f64;
-                            // Hack to temporarily recreate the swapchain (TODO: re-record the command buffers only)
-                            app.resized = true;
-                        }
+                        mouse_x = position.x;
+                        check_and_update_app(mouse_x, left_mouse_pressed, &mut app);
                     }
                     WindowEvent::MouseInput {
                         device_id,
                         state,
                         button,
                     } => {
-                        dbg!(device_id);
-                        dbg!(state);
-                        dbg!(button);
+                        left_mouse_pressed = button == MouseButton::Left && state.is_pressed();
+                        check_and_update_app(mouse_x, left_mouse_pressed, &mut app);
                     }
                     WindowEvent::DroppedFile(buf) => {
                         println!("{}", buf.display());
