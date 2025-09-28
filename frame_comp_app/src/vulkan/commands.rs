@@ -1,5 +1,9 @@
 use anyhow::Result;
-use vulkanalia::prelude::v1_3::*;
+use frame_comp::FrameComparatorCreateInfo;
+use vulkanalia::{
+    prelude::v1_3::*,
+    vk::{Offset2D, Rect2DBuilder},
+};
 
 use crate::app::AppData;
 
@@ -75,15 +79,13 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
         let vbar_width: u32 = 4;
         let left_width = (data.window_size.width as f64 * data.vbar_percentage) as u32;
 
-        dbg!(left_width);
-        dbg!(data.window_size);
-
         let left_render_area = vk::Rect2D::builder()
             .offset(vk::Offset2D::default())
             .extent(vk::Extent2D {
                 width: left_width,
                 height: data.swapchain_extent.height,
-            });
+            })
+            .build();
 
         let right_render_area = vk::Rect2D::builder()
             .offset(vk::Offset2D {
@@ -93,7 +95,8 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
             .extent(vk::Extent2D {
                 width: data.window_size.width - left_width - vbar_width,
                 height: data.swapchain_extent.height,
-            });
+            })
+            .build();
 
         let color_clear_value = vk::ClearValue {
             color: vk::ClearColorValue {

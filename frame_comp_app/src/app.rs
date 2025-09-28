@@ -3,6 +3,7 @@ use std::u64;
 
 use anyhow::{Result, anyhow};
 use cgmath::{Deg, point3, vec3};
+use frame_comp::{FrameComparator, FrameComparatorCreateInfo};
 use std::time::Instant;
 use vk::{KhrSurfaceExtension, KhrSwapchainExtension};
 use vulkanalia::loader::{LIBRARY, LibloadingLoader};
@@ -14,7 +15,7 @@ use vulkanalia::Version;
 use vulkanalia::window as vk_window;
 use winit::window::Window;
 
-use crate::vulkan::buffers::depth_buffer::create_depth_objects;
+use crate::vulkan::buffers::depth_buffer::{create_depth_objects, get_depth_format};
 use crate::vulkan::buffers::index_buffer::create_index_buffer;
 use crate::vulkan::buffers::uniform_buffer::{
     Mat4, UniformBufferObject, create_descriptor_pool, create_descriptor_set_layout,
@@ -23,6 +24,7 @@ use crate::vulkan::buffers::uniform_buffer::{
 use crate::vulkan::buffers::vertex_buffer::create_vertex_buffer;
 use crate::vulkan::commands::{create_command_buffers, create_command_pool};
 use crate::vulkan::device::create_logical_device;
+use crate::vulkan::frame_comparator::create_comparator;
 use crate::vulkan::framebuffer::create_framebuffers;
 use crate::vulkan::image::{
     create_color_objects, create_texture_image, create_texture_image_view, create_texture_sampler,
@@ -71,6 +73,9 @@ impl App {
         create_swapchain(window, &instance, &device, &mut data)?;
         create_swapchain_image_views(&device, &mut data)?;
 
+        // TODO: Figure out how to handle the comparator.
+        let comparator = create_comparator(&instance, &device, &data);
+
         data.render_pass[0] = create_render_pass(&instance, &device, &mut data)?;
         data.render_pass[1] = create_render_pass(&instance, &device, &mut data)?;
 
@@ -101,6 +106,11 @@ impl App {
         create_descriptor_sets(&device, &mut data)?;
         create_command_buffers(&device, &mut data)?;
         create_sync_objects(&device, &mut data)?;
+
+        let render_area = vk::Rect2D::builder()
+            .offset(vk::Offset2D::default())
+            .extent(data.swapchain_extent)
+            .build();
 
         Ok(Self {
             entry,
