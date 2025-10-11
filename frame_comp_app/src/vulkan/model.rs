@@ -7,7 +7,7 @@ use cgmath::{vec2, vec3};
 use super::vertex::Vertex;
 
 pub fn load_model(data: &mut AppData) -> Result<()> {
-    let mut reader = BufReader::new(File::open("/home/daniel/art/viking_room.obj")?);
+    let mut reader = BufReader::new(File::open("/home/daniel/Art/viking_room.obj")?);
 
     // We are interested only in the Vec<Model>, not in the Vec<Material>
     let (models, _) = tobj::load_obj_buf(

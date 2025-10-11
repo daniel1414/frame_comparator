@@ -141,6 +141,14 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
         unsafe {
             device.begin_command_buffer(*command_buffer, &info)?;
 
+            device.cmd_bind_vertex_buffers(*command_buffer, 0, &[data.vertex_buffer], &[0]);
+                device.cmd_bind_index_buffer(
+                    *command_buffer,
+                    data.index_buffer,
+                    0,
+                    vk::IndexType::UINT32,
+                );
+
             for (render_pass_begin_info, pipeline_layout, pipeline) in loop_data {
                 // Render pass for the left half of the image.
                 device.cmd_begin_render_pass(
@@ -158,13 +166,6 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
                     vk::PipelineBindPoint::GRAPHICS,
                     *pipeline,
                 );
-                device.cmd_bind_vertex_buffers(*command_buffer, 0, &[data.vertex_buffer], &[0]);
-                device.cmd_bind_index_buffer(
-                    *command_buffer,
-                    data.index_buffer,
-                    0,
-                    vk::IndexType::UINT32,
-                );
                 device.cmd_bind_descriptor_sets(
                     *command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
@@ -173,6 +174,7 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
                     &[data.descriptor_sets[i]],
                     &[],
                 );
+                
                 device.cmd_draw_indexed(*command_buffer, data.indices.len() as u32, 1, 0, 0, 0);
                 device.cmd_end_render_pass(*command_buffer);
             }

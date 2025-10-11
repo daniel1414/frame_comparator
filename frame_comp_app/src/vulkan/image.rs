@@ -15,8 +15,9 @@ pub fn create_texture_image(
     device: &Device,
     data: &mut AppData,
 ) -> Result<()> {
+    let image_path = "/home/daniel/Art/viking_room.png";
     let image =
-        File::open("/home/daniel/art/viking_room.png").expect("Failed to open the image resource");
+        File::open(image_path).expect(format!("Failed to open the image resource {image_path}").as_str());
 
     let decoder = png::Decoder::new(image);
     let mut reader = decoder.read_info()?;

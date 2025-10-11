@@ -26,8 +26,6 @@ fn main() -> Result<()> {
         .with_inner_size(LogicalSize::new(1024, 768))
         .build(&event_loop)?;
 
-    let window_size = window.inner_size();
-
     // Vulkan App
     let mut app = App::create(&window)?;
     let mut minimized = false;
@@ -36,6 +34,7 @@ fn main() -> Result<()> {
 
     event_loop.run(move |event, elwt| {
         let check_and_update_app = |mouse: f64, mouse_pressed: bool, app: &mut App| {
+            let window_size = app.data.window_size;
             if mouse_pressed && mouse < window_size.width as f64 - 10.0 && mouse > 10.0 {
                 app.data.vbar_percentage = mouse / window_size.width as f64;
                 app.resized = true;
@@ -67,6 +66,7 @@ fn main() -> Result<()> {
                         } else {
                             minimized = false;
                             app.resized = true;
+                            app.data.window_size = size;
                         }
                     }
                     WindowEvent::CursorMoved {
