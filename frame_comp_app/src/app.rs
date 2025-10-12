@@ -94,6 +94,7 @@ impl App {
 
         data.left_framebuffers = create_framebuffers(&device, &data, &data.render_pass[0])?;
         data.right_framebuffers = create_framebuffers(&device, &data, &data.render_pass[1])?;
+        data.composite_framebuffers = create_framebuffers(&deivce, &data, )
 
         create_texture_image(&instance, &device, &mut data)?;
         create_texture_image_view(&device, &mut data)?;
@@ -488,6 +489,7 @@ pub struct AppData {
     // 0 for the left side, 1 for the right side
     pub render_pass: [vk::RenderPass; 2],
 
+
     /// The layout of the descriptor set for the UBO that holds the MVP matrix.
     pub descriptor_set_layout: vk::DescriptorSetLayout,
     pub left_pipeline_layout: vk::PipelineLayout,
@@ -496,6 +498,10 @@ pub struct AppData {
     pub right_pipeline: vk::Pipeline,
     pub left_framebuffers: Vec<vk::Framebuffer>,
     pub right_framebuffers: Vec<vk::Framebuffer>,
+
+    // Framebuffers for the comparison output.
+    pub composite_framebuffers: Vec<vk::Framebuffer>,
+
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
 

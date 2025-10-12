@@ -34,7 +34,8 @@ pub fn create_command_pool(instance: &Instance, device: &Device, data: &mut AppD
         .flags(vk::CommandPoolCreateFlags::empty())
         // The command pool created is tied to a specific queue family, and thus
         // all the buffers allocated from it are tied to the same queue family as well.
-        .queue_family_index(indices.graphics);
+        .queue_family_index(indices.graphics)
+        .build();
 
     data.command_pool = unsafe { device.create_command_pool(&info, None) }?;
 
