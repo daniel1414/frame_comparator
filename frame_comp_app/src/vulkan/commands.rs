@@ -1,5 +1,4 @@
 use anyhow::Result;
-use frame_comp::FrameComparatorCreateInfo;
 use vulkanalia::{
     prelude::v1_3::*,
     vk::{Offset2D, Rect2DBuilder},
@@ -78,7 +77,7 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
             .inheritance_info(&inheritance);
 
         let vbar_width: u32 = 4;
-        let left_width = (data.window_size.width as f64 * data.vbar_percentage) as u32;
+        let left_width = (data.swapchain_extent.width as f64 * data.vbar_percentage) as u32;
 
         let left_render_area = vk::Rect2D::builder()
             .offset(vk::Offset2D::default())
@@ -94,7 +93,7 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
                 y: 0,
             })
             .extent(vk::Extent2D {
-                width: data.window_size.width - left_width - vbar_width,
+                width: data.swapchain_extent.width - left_width - vbar_width,
                 height: data.swapchain_extent.height,
             })
             .build();
@@ -143,12 +142,12 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
             device.begin_command_buffer(*command_buffer, &info)?;
 
             device.cmd_bind_vertex_buffers(*command_buffer, 0, &[data.vertex_buffer], &[0]);
-                device.cmd_bind_index_buffer(
-                    *command_buffer,
-                    data.index_buffer,
-                    0,
-                    vk::IndexType::UINT32,
-                );
+            device.cmd_bind_index_buffer(
+                *command_buffer,
+                data.index_buffer,
+                0,
+                vk::IndexType::UINT32,
+            );
 
             for (render_pass_begin_info, pipeline_layout, pipeline) in loop_data {
                 // Render pass for the left half of the image.
@@ -175,7 +174,7 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
                     &[data.descriptor_sets[i]],
                     &[],
                 );
-                
+
                 device.cmd_draw_indexed(*command_buffer, data.indices.len() as u32, 1, 0, 0, 0);
                 device.cmd_end_render_pass(*command_buffer);
             }

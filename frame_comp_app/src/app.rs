@@ -1,9 +1,10 @@
 use std::ptr::copy_nonoverlapping as memcpy;
+use std::rc::Rc;
 use std::u64;
 
 use anyhow::{Result, anyhow};
 use cgmath::{Deg, point3, vec3};
-use frame_comp::{FrameComparator, FrameComparatorCreateInfo};
+use frame_comp::FrameComparator;
 use std::time::Instant;
 use vk::{KhrSurfaceExtension, KhrSwapchainExtension};
 use vulkanalia::loader::{LIBRARY, LibloadingLoader};
@@ -24,7 +25,6 @@ use crate::vulkan::buffers::uniform_buffer::{
 use crate::vulkan::buffers::vertex_buffer::create_vertex_buffer;
 use crate::vulkan::commands::{create_command_buffers, create_command_pool};
 use crate::vulkan::device::create_logical_device;
-use crate::vulkan::frame_comparator::create_comparator;
 use crate::vulkan::framebuffer::create_framebuffers;
 use crate::vulkan::image::{
     create_color_objects, create_texture_image, create_texture_image_view, create_texture_sampler,
@@ -63,7 +63,6 @@ impl App {
         let entry = unsafe { Entry::new(loader).map_err(|b| anyhow!("{}", b)) }?;
         let mut data = AppData::default();
 
-        data.window_size = window.inner_size();
         data.vbar_percentage = 0.5;
 
         let instance = create_instance(window, &entry, &mut data)?;
@@ -74,7 +73,7 @@ impl App {
         create_swapchain_image_views(&device, &mut data)?;
 
         // TODO: Figure out how to handle the comparator.
-        let comparator = create_comparator(&instance, &device, &data);
+        //let comparator = create_comparator(&instance, &device, &data);
 
         data.render_pass[0] = create_render_pass(&instance, &device, &mut data)?;
         data.render_pass[1] = create_render_pass(&instance, &device, &mut data)?;
@@ -94,7 +93,7 @@ impl App {
 
         data.left_framebuffers = create_framebuffers(&device, &data, &data.render_pass[0])?;
         data.right_framebuffers = create_framebuffers(&device, &data, &data.render_pass[1])?;
-        data.composite_framebuffers = create_framebuffers(&deivce, &data, )
+        //data.composite_framebuffers = create_framebuffers(&deivce, &data, )
 
         create_texture_image(&instance, &device, &mut data)?;
         create_texture_image_view(&device, &mut data)?;
@@ -112,6 +111,12 @@ impl App {
             .offset(vk::Offset2D::default())
             .extent(data.swapchain_extent)
             .build();
+
+        data.frame_comparator = Some(FrameComparator::new(
+            unsafe { Rc::from_raw(&device) },
+            data.swapchain_format,
+            data.swapchain_extent,
+        )?);
 
         Ok(Self {
             entry,
@@ -161,6 +166,13 @@ impl App {
         self.data
             .image_usage_fences
             .resize(self.data.swapchain_images.len(), vk::Fence::null());
+
+        self.data.frame_comparator = Some(FrameComparator::new(
+            unsafe { Rc::from_raw(&self.device) },
+            self.data.swapchain_format,
+            self.data.swapchain_extent,
+        )?);
+
         Ok(())
     }
 
@@ -209,6 +221,10 @@ impl App {
 
     fn destroy_swapchain(&mut self) {
         unsafe {
+            if let Some(comparator) = self.data.frame_comparator.take() {
+                // the comparator will be dropped here, I guess.
+            }
+
             self.device
                 .destroy_image_view(self.data.color_image_view, None);
             self.device.free_memory(self.data.color_image_memory, None);
@@ -489,7 +505,6 @@ pub struct AppData {
     // 0 for the left side, 1 for the right side
     pub render_pass: [vk::RenderPass; 2],
 
-
     /// The layout of the descriptor set for the UBO that holds the MVP matrix.
     pub descriptor_set_layout: vk::DescriptorSetLayout,
     pub left_pipeline_layout: vk::PipelineLayout,
@@ -559,6 +574,8 @@ pub struct AppData {
     pub color_image_memory: vk::DeviceMemory,
     pub color_image_view: vk::ImageView,
 
-    pub window_size: PhysicalSize<u32>,
     pub vbar_percentage: f64,
+
+    // Frame comparator
+    pub frame_comparator: Option<FrameComparator>,
 }
