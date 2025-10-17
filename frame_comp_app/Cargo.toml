@@ -14,3 +14,4 @@ tobj = { version = "3", features = ["log"] }
 vulkanalia = { version = "=0.29.0", features = ["libloading", "provisional", "window"]}
 winit = "0.29"
 frame_comp = { path = "../frame_comp" }
+lazy_static = "1.4"

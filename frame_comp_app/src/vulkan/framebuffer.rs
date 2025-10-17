@@ -17,12 +17,18 @@ pub fn create_framebuffers(
     device: &Device,
     data: &AppData,
     render_pass: &vk::RenderPass,
+    index: usize,
 ) -> Result<Vec<vk::Framebuffer>> {
+    dbg!("creating framebuffers");
     let fb = data
         .swapchain_image_views
         .iter()
         .map(|i| {
-            let attachments = &[data.color_image_view, data.depth_image_view, *i];
+            let attachments = &[
+                data.color_image_view[index],
+                data.depth_image_view[index],
+                data.resolve_image_view[index],
+            ];
             let create_info = vk::FramebufferCreateInfo::builder()
                 .render_pass(*render_pass)
                 // Each attachment corresponds to one of the attachments
@@ -39,6 +45,33 @@ pub fn create_framebuffers(
             unsafe { device.create_framebuffer(&create_info, None) }
         })
         .collect::<Result<Vec<_>, _>>()?;
+    dbg!("finished");
+    Ok(fb)
+}
 
+pub fn create_composite_framebuffers(
+    device: &Device,
+    data: &AppData,
+    render_pass: &vk::RenderPass,
+) -> Result<Vec<vk::Framebuffer>> {
+    dbg!("creating composite framebuffers");
+    let fb = data
+        .swapchain_image_views
+        .iter()
+        .map(|i| {
+            let attachments = &[*i];
+            let create_info = vk::FramebufferCreateInfo::builder()
+                .render_pass(*render_pass)
+                .attachments(attachments)
+                .width(data.swapchain_extent.width)
+                .height(data.swapchain_extent.height)
+                .layers(1)
+                .build();
+
+            unsafe { device.create_framebuffer(&create_info, None) }
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    dbg!("finished");
     Ok(fb)
 }

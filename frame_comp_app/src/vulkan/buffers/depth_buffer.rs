@@ -9,6 +9,7 @@ pub fn create_depth_objects(
     instance: &Instance,
     device: &Device,
     data: &mut AppData,
+    index: usize,
 ) -> Result<()> {
     let format = get_depth_format(instance, data)?;
 
@@ -27,10 +28,10 @@ pub fn create_depth_objects(
         vk::MemoryPropertyFlags::DEVICE_LOCAL,
     )?;
 
-    data.depth_image = depth_image;
-    data.depth_image_memory = depth_image_memory;
+    data.depth_image[index] = depth_image;
+    data.depth_image_memory[index] = depth_image_memory;
 
-    data.depth_image_view =
+    data.depth_image_view[index] =
         create_image_view(device, depth_image, format, vk::ImageAspectFlags::DEPTH, 1)?;
 
     Ok(())

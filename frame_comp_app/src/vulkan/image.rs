@@ -16,8 +16,8 @@ pub fn create_texture_image(
     data: &mut AppData,
 ) -> Result<()> {
     let image_path = "/home/daniel/Art/viking_room.png";
-    let image =
-        File::open(image_path).expect(format!("Failed to open the image resource {image_path}").as_str());
+    let image = File::open(image_path)
+        .expect(format!("Failed to open the image resource {image_path}").as_str());
 
     let decoder = png::Decoder::new(image);
     let mut reader = decoder.read_info()?;
@@ -539,6 +539,7 @@ pub fn create_color_objects(
     instance: &Instance,
     device: &Device,
     data: &mut AppData,
+    index: usize,
 ) -> Result<()> {
     let (color_image, color_image_memory) = create_image(
         instance,
@@ -550,16 +551,45 @@ pub fn create_color_objects(
         data.msaa_samples,
         data.swapchain_format,
         vk::ImageTiling::OPTIMAL,
-        vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSIENT_ATTACHMENT,
+        vk::ImageUsageFlags::COLOR_ATTACHMENT
+            | vk::ImageUsageFlags::SAMPLED
+            | vk::ImageUsageFlags::TRANSFER_SRC,
         vk::MemoryPropertyFlags::DEVICE_LOCAL,
     )?;
 
-    data.color_image = color_image;
-    data.color_image_memory = color_image_memory;
+    data.color_image[index] = color_image;
+    data.color_image_memory[index] = color_image_memory;
 
-    data.color_image_view = create_image_view(
+    data.color_image_view[index] = create_image_view(
         device,
-        data.color_image,
+        color_image,
+        data.swapchain_format,
+        vk::ImageAspectFlags::COLOR,
+        1,
+    )?;
+
+    // The resources for the resolve image
+    let (color_image, color_image_memory) = create_image(
+        instance,
+        device,
+        data,
+        data.swapchain_extent.width,
+        data.swapchain_extent.height,
+        1,
+        vk::SampleCountFlags::_1,
+        data.swapchain_format,
+        vk::ImageTiling::OPTIMAL,
+        vk::ImageUsageFlags::COLOR_ATTACHMENT // must be usable as a render target
+            | vk::ImageUsageFlags::SAMPLED, // The comparator will sample from it
+        vk::MemoryPropertyFlags::DEVICE_LOCAL,
+    )?;
+
+    data.resolve_image[index] = color_image;
+    data.resolve_image_memory[index] = color_image_memory;
+
+    data.resolve_image_view[index] = create_image_view(
+        device,
+        color_image,
         data.swapchain_format,
         vk::ImageAspectFlags::COLOR,
         1,

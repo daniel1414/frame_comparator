@@ -30,7 +30,7 @@ pub fn create_render_pass(
         // Expected layout of the attachment before rendering.
         .initial_layout(vk::ImageLayout::UNDEFINED)
         // Defines what the final layout of the attachment should be after rendering.
-        .final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+        .final_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
         .build();
 
     let color_attachment_ref = vk::AttachmentReference::builder()
@@ -66,7 +66,7 @@ pub fn create_render_pass(
         .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
         .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
         .initial_layout(vk::ImageLayout::UNDEFINED)
-        .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+        .final_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
         .build();
 
     let color_resolve_attachment_ref = vk::AttachmentReference::builder()

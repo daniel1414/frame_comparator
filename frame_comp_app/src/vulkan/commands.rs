@@ -4,6 +4,8 @@ use vulkanalia::{
     vk::{Offset2D, Rect2DBuilder},
 };
 
+use frame_comp::FrameComparator;
+
 use crate::app::AppData;
 
 use super::queue::QueueFamilyIndices;
@@ -177,6 +179,20 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
 
                 device.cmd_draw_indexed(*command_buffer, data.indices.len() as u32, 1, 0, 0, 0);
                 device.cmd_end_render_pass(*command_buffer);
+            }
+
+            println!("About to compare()");
+            // Compare the outputs
+            if let (Some(comparator), Some(framebuffers)) =
+                (&data.frame_comparator, &data.composite_framebuffers)
+            {
+                println!("Comparing");
+                comparator.compare(
+                    *command_buffer,
+                    data.left_framebuffers[i],
+                    data.right_framebuffers[i],
+                    framebuffers[i],
+                )?;
             }
 
             device.end_command_buffer(*command_buffer)?;

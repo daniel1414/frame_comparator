@@ -72,16 +72,16 @@ pub fn create_descriptor_pool(device: &Device, data: &mut AppData) -> Result<()>
     let ubo_size = vk::DescriptorPoolSize::builder()
         .type_(vk::DescriptorType::UNIFORM_BUFFER)
         // We want to allocate one UBO for every swapchain image.
-        .descriptor_count(data.swapchain_images.len() as u32);
+        .descriptor_count(data.swapchain_images.len() as u32 * 2);
 
     let sampler_size = vk::DescriptorPoolSize::builder()
         .type_(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-        .descriptor_count(data.swapchain_images.len() as u32);
+        .descriptor_count(data.swapchain_images.len() as u32 * 2);
 
     let pool_sizes = &[ubo_size, sampler_size];
     let info = vk::DescriptorPoolCreateInfo::builder()
         .pool_sizes(pool_sizes)
-        .max_sets(data.swapchain_images.len() as u32);
+        .max_sets(data.swapchain_images.len() as u32 * 2);
 
     data.descriptor_pool = unsafe { device.create_descriptor_pool(&info, None) }?;
 

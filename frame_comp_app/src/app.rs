@@ -25,7 +25,7 @@ use crate::vulkan::buffers::uniform_buffer::{
 use crate::vulkan::buffers::vertex_buffer::create_vertex_buffer;
 use crate::vulkan::commands::{create_command_buffers, create_command_pool};
 use crate::vulkan::device::create_logical_device;
-use crate::vulkan::framebuffer::create_framebuffers;
+use crate::vulkan::framebuffer::{create_composite_framebuffers, create_framebuffers};
 use crate::vulkan::image::{
     create_color_objects, create_texture_image, create_texture_image_view, create_texture_sampler,
 };
@@ -72,9 +72,6 @@ impl App {
         create_swapchain(window, &instance, &device, &mut data)?;
         create_swapchain_image_views(&device, &mut data)?;
 
-        // TODO: Figure out how to handle the comparator.
-        //let comparator = create_comparator(&instance, &device, &data);
-
         data.render_pass[0] = create_render_pass(&instance, &device, &mut data)?;
         data.render_pass[1] = create_render_pass(&instance, &device, &mut data)?;
 
@@ -88,12 +85,14 @@ impl App {
             create_pipeline(&device, &data, &data.render_pass[1])?;
 
         create_command_pool(&instance, &device, &mut data)?;
-        create_color_objects(&instance, &device, &mut data)?;
-        create_depth_objects(&instance, &device, &mut data)?;
 
-        data.left_framebuffers = create_framebuffers(&device, &data, &data.render_pass[0])?;
-        data.right_framebuffers = create_framebuffers(&device, &data, &data.render_pass[1])?;
-        //data.composite_framebuffers = create_framebuffers(&deivce, &data, )
+        for i in 0..2 {
+            create_color_objects(&instance, &device, &mut data, i)?;
+            create_depth_objects(&instance, &device, &mut data, i)?;
+        }
+
+        data.left_framebuffers = create_framebuffers(&device, &data, &data.render_pass[0], 0)?;
+        data.right_framebuffers = create_framebuffers(&device, &data, &data.render_pass[1], 1)?;
 
         create_texture_image(&instance, &device, &mut data)?;
         create_texture_image_view(&device, &mut data)?;
@@ -104,19 +103,36 @@ impl App {
         create_uniform_buffers(&instance, &device, &mut data)?;
         create_descriptor_pool(&device, &mut data)?;
         create_descriptor_sets(&device, &mut data)?;
+
+        data.frame_comparator = Some(FrameComparator::new(
+            unsafe { Rc::from_raw(&device) },
+            data.graphics_queue,
+            data.command_pool,
+            data.descriptor_pool,
+            data.swapchain_format,
+            data.swapchain_extent,
+        )?);
+
+        data.composite_framebuffers = match &data.frame_comparator {
+            Some(comparator) => Some(create_composite_framebuffers(
+                &device,
+                &data,
+                &comparator.render_pass(),
+            )?),
+            None => {
+                println!("Failed to create composite framebuffers!");
+                None
+            }
+        };
+
         create_command_buffers(&device, &mut data)?;
+
         create_sync_objects(&device, &mut data)?;
 
         let render_area = vk::Rect2D::builder()
             .offset(vk::Offset2D::default())
             .extent(data.swapchain_extent)
             .build();
-
-        data.frame_comparator = Some(FrameComparator::new(
-            unsafe { Rc::from_raw(&device) },
-            data.swapchain_format,
-            data.swapchain_extent,
-        )?);
 
         Ok(Self {
             entry,
@@ -150,28 +166,47 @@ impl App {
         (self.data.right_pipeline_layout, self.data.right_pipeline) =
             create_pipeline(&self.device, &self.data, &self.data.render_pass[1])?;
 
-        create_color_objects(&self.instance, &self.device, &mut self.data)?;
-        create_depth_objects(&self.instance, &self.device, &mut self.data)?;
+        for i in 0..2 {
+            create_color_objects(&self.instance, &self.device, &mut self.data, i)?;
+            create_depth_objects(&self.instance, &self.device, &mut self.data, i)?;
+        }
 
         self.data.left_framebuffers =
-            create_framebuffers(&self.device, &self.data, &self.data.render_pass[0])?;
+            create_framebuffers(&self.device, &self.data, &self.data.render_pass[0], 0)?;
 
         self.data.right_framebuffers =
-            create_framebuffers(&self.device, &self.data, &self.data.render_pass[1])?;
+            create_framebuffers(&self.device, &self.data, &self.data.render_pass[1], 1)?;
 
         create_uniform_buffers(&self.instance, &self.device, &mut self.data)?;
         create_descriptor_pool(&self.device, &mut self.data)?;
         create_descriptor_sets(&self.device, &mut self.data)?;
-        create_command_buffers(&self.device, &mut self.data)?;
+
         self.data
             .image_usage_fences
             .resize(self.data.swapchain_images.len(), vk::Fence::null());
 
         self.data.frame_comparator = Some(FrameComparator::new(
             unsafe { Rc::from_raw(&self.device) },
+            self.data.graphics_queue,
+            self.data.command_pool,
+            self.data.descriptor_pool,
             self.data.swapchain_format,
             self.data.swapchain_extent,
         )?);
+
+        self.data.composite_framebuffers = match &self.data.frame_comparator {
+            Some(comparator) => Some(create_composite_framebuffers(
+                &self.device,
+                &self.data,
+                &comparator.render_pass(),
+            )?),
+            None => {
+                println!("Failed to create composite framebuffers!");
+                None
+            }
+        };
+
+        create_command_buffers(&self.device, &mut self.data)?;
 
         Ok(())
     }
@@ -225,14 +260,29 @@ impl App {
                 // the comparator will be dropped here, I guess.
             }
 
-            self.device
-                .destroy_image_view(self.data.color_image_view, None);
-            self.device.free_memory(self.data.color_image_memory, None);
-            self.device.destroy_image(self.data.color_image, None);
-            self.device
-                .destroy_image_view(self.data.depth_image_view, None);
-            self.device.free_memory(self.data.depth_image_memory, None);
-            self.device.destroy_image(self.data.depth_image, None);
+            for i in 0..2 {
+                // resolve images
+                self.device
+                    .destroy_image_view(self.data.resolve_image_view[i], None);
+                self.device
+                    .free_memory(self.data.resolve_image_memory[i], None);
+                self.device.destroy_image(self.data.resolve_image[i], None);
+
+                // color images
+                self.device
+                    .destroy_image_view(self.data.color_image_view[i], None);
+                self.device
+                    .free_memory(self.data.color_image_memory[i], None);
+                self.device.destroy_image(self.data.color_image[i], None);
+
+                // depth images
+                self.device
+                    .destroy_image_view(self.data.depth_image_view[i], None);
+                self.device
+                    .free_memory(self.data.depth_image_memory[i], None);
+                self.device.destroy_image(self.data.depth_image[i], None);
+            }
+
             self.device
                 .destroy_descriptor_pool(self.data.descriptor_pool, None);
             self.data
@@ -258,6 +308,12 @@ impl App {
                 .right_framebuffers
                 .iter()
                 .for_each(|f| self.device.destroy_framebuffer(*f, None));
+
+            if let Some(framebuffers) = &self.data.composite_framebuffers {
+                framebuffers
+                    .iter()
+                    .for_each(|f| self.device.destroy_framebuffer(*f, None));
+            }
 
             self.device.destroy_pipeline(self.data.left_pipeline, None);
             self.device.destroy_pipeline(self.data.right_pipeline, None);
@@ -515,7 +571,7 @@ pub struct AppData {
     pub right_framebuffers: Vec<vk::Framebuffer>,
 
     // Framebuffers for the comparison output.
-    pub composite_framebuffers: Vec<vk::Framebuffer>,
+    pub composite_framebuffers: Option<Vec<vk::Framebuffer>>,
 
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
@@ -565,14 +621,18 @@ pub struct AppData {
     pub texture_sampler: vk::Sampler,
 
     /// Resources for the depth buffer
-    pub depth_image: vk::Image,
-    pub depth_image_memory: vk::DeviceMemory,
-    pub depth_image_view: vk::ImageView,
+    pub depth_image: [vk::Image; 2],
+    pub depth_image_memory: [vk::DeviceMemory; 2],
+    pub depth_image_view: [vk::ImageView; 2],
 
     // Resources for multisampling
-    pub color_image: vk::Image,
-    pub color_image_memory: vk::DeviceMemory,
-    pub color_image_view: vk::ImageView,
+    pub color_image: [vk::Image; 2],
+    pub color_image_memory: [vk::DeviceMemory; 2],
+    pub color_image_view: [vk::ImageView; 2],
+
+    pub resolve_image: [vk::Image; 2],
+    pub resolve_image_memory: [vk::DeviceMemory; 2],
+    pub resolve_image_view: [vk::ImageView; 2],
 
     pub vbar_percentage: f64,
 
