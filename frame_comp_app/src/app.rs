@@ -106,12 +106,11 @@ impl App {
 
         data.frame_comparator = Some(FrameComparator::new(
             unsafe { Rc::from_raw(&device) },
-            data.graphics_queue,
-            data.command_pool,
             data.descriptor_pool,
             data.swapchain_format,
             data.swapchain_extent,
             &data.resolve_image_view,
+            None,
         )?);
 
         data.composite_framebuffers = match &data.frame_comparator {
@@ -188,12 +187,11 @@ impl App {
 
         self.data.frame_comparator = Some(FrameComparator::new(
             unsafe { Rc::from_raw(&self.device) },
-            self.data.graphics_queue,
-            self.data.command_pool,
             self.data.descriptor_pool,
             self.data.swapchain_format,
             self.data.swapchain_extent,
             &self.data.resolve_image_view,
+            None,
         )?);
 
         self.data.composite_framebuffers = match &self.data.frame_comparator {
