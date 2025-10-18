@@ -103,25 +103,16 @@ impl App {
         create_descriptor_pool(&device, &mut data)?;
         create_descriptor_sets(&device, &mut data)?;
 
-        data.frame_comparator = Some(FrameComparator::new(
+        let comparator = FrameComparator::new(
             unsafe { Rc::from_raw(&device) },
             data.descriptor_pool,
             data.swapchain_format,
             data.swapchain_extent,
             &data.resolve_image_view,
-        )?);
-
-        data.composite_framebuffers = match &data.frame_comparator {
-            Some(comparator) => Some(create_composite_framebuffers(
-                &device,
-                &data,
-                &comparator.render_pass(),
-            )?),
-            None => {
-                println!("Failed to create composite framebuffers!");
-                None
-            }
-        };
+        )?;
+        let comp_framebuffers =
+            create_composite_framebuffers(&device, &data, &comparator.render_pass())?;
+        data.frame_comparator = Some((comparator, comp_framebuffers));
 
         create_command_buffers(&device, &mut data)?;
 
@@ -183,25 +174,17 @@ impl App {
             .image_usage_fences
             .resize(self.data.swapchain_images.len(), vk::Fence::null());
 
-        self.data.frame_comparator = Some(FrameComparator::new(
+        let comparator = FrameComparator::new(
             unsafe { Rc::from_raw(&self.device) },
             self.data.descriptor_pool,
             self.data.swapchain_format,
             self.data.swapchain_extent,
             &self.data.resolve_image_view,
-        )?);
+        )?;
+        let comp_framebuffers =
+            create_composite_framebuffers(&self.device, &self.data, &comparator.render_pass())?;
 
-        self.data.composite_framebuffers = match &self.data.frame_comparator {
-            Some(comparator) => Some(create_composite_framebuffers(
-                &self.device,
-                &self.data,
-                &comparator.render_pass(),
-            )?),
-            None => {
-                println!("Failed to create composite framebuffers!");
-                None
-            }
-        };
+        self.data.frame_comparator = Some((comparator, comp_framebuffers));
 
         create_command_buffers(&self.device, &mut self.data)?;
 
@@ -253,10 +236,6 @@ impl App {
 
     fn destroy_swapchain(&mut self) {
         unsafe {
-            if let Some(comparator) = self.data.frame_comparator.take() {
-                // the comparator will be dropped here, I guess.
-            }
-
             for i in 0..2 {
                 // resolve images
                 self.device
@@ -306,7 +285,7 @@ impl App {
                 .iter()
                 .for_each(|f| self.device.destroy_framebuffer(*f, None));
 
-            if let Some(framebuffers) = &self.data.composite_framebuffers {
+            if let Some((_, framebuffers)) = self.data.frame_comparator.take() {
                 framebuffers
                     .iter()
                     .for_each(|f| self.device.destroy_framebuffer(*f, None));
@@ -567,9 +546,6 @@ pub struct AppData {
     pub left_framebuffers: Vec<vk::Framebuffer>,
     pub right_framebuffers: Vec<vk::Framebuffer>,
 
-    // Framebuffers for the comparison output.
-    pub composite_framebuffers: Option<Vec<vk::Framebuffer>>,
-
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
 
@@ -634,5 +610,5 @@ pub struct AppData {
     pub vbar_percentage: f32,
 
     // Frame comparator
-    pub frame_comparator: Option<FrameComparator>,
+    pub frame_comparator: Option<(FrameComparator, Vec<vk::Framebuffer>)>,
 }
