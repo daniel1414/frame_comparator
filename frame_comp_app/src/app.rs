@@ -109,6 +109,7 @@ impl App {
             data.swapchain_format,
             data.swapchain_extent,
             &data.resolve_image_view,
+            None,
         )?;
         let comp_framebuffers =
             create_composite_framebuffers(&device, &data, &comparator.render_pass())?;
@@ -180,6 +181,7 @@ impl App {
             self.data.swapchain_format,
             self.data.swapchain_extent,
             &self.data.resolve_image_view,
+            None,
         )?;
         let comp_framebuffers =
             create_composite_framebuffers(&self.device, &self.data, &comparator.render_pass())?;
