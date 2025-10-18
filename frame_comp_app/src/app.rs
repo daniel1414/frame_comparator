@@ -636,7 +636,7 @@ pub struct AppData {
     pub resolve_image_memory: [vk::DeviceMemory; 2],
     pub resolve_image_view: [vk::ImageView; 2],
 
-    pub vbar_percentage: f64,
+    pub vbar_percentage: f32,
 
     // Frame comparator
     pub frame_comparator: Option<FrameComparator>,

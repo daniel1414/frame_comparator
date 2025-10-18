@@ -176,12 +176,7 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
                 (&data.frame_comparator, &data.composite_framebuffers)
             {
                 println!("Comparing");
-                comparator.compare(
-                    *command_buffer,
-                    &data.resolve_image_view[0],
-                    &data.resolve_image_view[1],
-                    framebuffers[i],
-                )?;
+                comparator.compare(*command_buffer, data.vbar_percentage, framebuffers[i])?;
             }
 
             device.end_command_buffer(*command_buffer)?;

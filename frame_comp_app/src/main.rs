@@ -36,7 +36,7 @@ fn main() -> Result<()> {
         let check_and_update_app = |mouse: f64, mouse_pressed: bool, app: &mut App| {
             let window_size = app.data.swapchain_extent;
             if mouse_pressed && mouse < window_size.width as f64 - 10.0 && mouse > 10.0 {
-                app.data.vbar_percentage = mouse / window_size.width as f64;
+                app.data.vbar_percentage = mouse as f32 / window_size.width as f32;
                 app.resized = true;
             }
         };
