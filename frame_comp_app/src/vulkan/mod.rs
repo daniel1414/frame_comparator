@@ -3,7 +3,6 @@ pub mod commands;
 pub mod debug;
 pub mod device;
 pub mod errors;
-pub mod frame_comparator;
 pub mod framebuffer;
 pub mod image;
 pub mod instance;

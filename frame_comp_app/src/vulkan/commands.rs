@@ -1,10 +1,7 @@
 use anyhow::Result;
-use vulkanalia::{
-    prelude::v1_3::*,
-    vk::{Offset2D, Rect2DBuilder},
-};
+use vulkanalia::prelude::v1_3::*;
 
-use frame_comp::FrameComparator;
+use frame_comp::FrameCompareInfo;
 
 use crate::app::AppData;
 
@@ -176,7 +173,13 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
                 (&data.frame_comparator, &data.composite_framebuffers)
             {
                 println!("Comparing");
-                comparator.compare(*command_buffer, data.vbar_percentage, framebuffers[i])?;
+                let compare_info = FrameCompareInfo::builder()
+                    .command_buffer(*command_buffer)
+                    .out_framebuffer(framebuffers[i])
+                    .position(data.vbar_percentage)
+                    .build();
+
+                comparator.compare(&compare_info)?;
             }
 
             device.end_command_buffer(*command_buffer)?;

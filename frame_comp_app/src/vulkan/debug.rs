@@ -3,8 +3,6 @@ use std::os::raw::c_void;
 use std::{collections::HashMap, ffi::CStr, sync::Mutex};
 use vulkanalia::prelude::v1_3::*;
 
-use lazy_static::lazy_static;
-
 // Tracks how many times each message has been printed
 lazy_static::lazy_static! {
     static ref MESSAGE_COUNT: Mutex<HashMap<String, u32>> = Mutex::new(HashMap::new());

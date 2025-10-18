@@ -10,13 +10,12 @@ use vk::{KhrSurfaceExtension, KhrSwapchainExtension};
 use vulkanalia::loader::{LIBRARY, LibloadingLoader};
 use vulkanalia::prelude::v1_3::*;
 use vulkanalia::vk::ExtDebugUtilsExtension;
-use winit::dpi::PhysicalSize;
 
 use vulkanalia::Version;
 use vulkanalia::window as vk_window;
 use winit::window::Window;
 
-use crate::vulkan::buffers::depth_buffer::{create_depth_objects, get_depth_format};
+use crate::vulkan::buffers::depth_buffer::create_depth_objects;
 use crate::vulkan::buffers::index_buffer::create_index_buffer;
 use crate::vulkan::buffers::uniform_buffer::{
     Mat4, UniformBufferObject, create_descriptor_pool, create_descriptor_set_layout,
@@ -110,7 +109,6 @@ impl App {
             data.swapchain_format,
             data.swapchain_extent,
             &data.resolve_image_view,
-            None,
         )?);
 
         data.composite_framebuffers = match &data.frame_comparator {
@@ -191,7 +189,6 @@ impl App {
             self.data.swapchain_format,
             self.data.swapchain_extent,
             &self.data.resolve_image_view,
-            None,
         )?);
 
         self.data.composite_framebuffers = match &self.data.frame_comparator {
