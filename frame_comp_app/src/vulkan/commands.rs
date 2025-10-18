@@ -78,24 +78,13 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
             .flags(vk::CommandBufferUsageFlags::empty())
             .inheritance_info(&inheritance);
 
-        let vbar_width: u32 = 4;
-        let left_width = (data.swapchain_extent.width as f64 * data.vbar_percentage) as u32;
+        //let vbar_width: u32 = 4;
+        //let left_width = (data.swapchain_extent.width as f64 * data.vbar_percentage) as u32;
 
-        let left_render_area = vk::Rect2D::builder()
+        let render_area = vk::Rect2D::builder()
             .offset(vk::Offset2D::default())
             .extent(vk::Extent2D {
-                width: left_width,
-                height: data.swapchain_extent.height,
-            })
-            .build();
-
-        let right_render_area = vk::Rect2D::builder()
-            .offset(vk::Offset2D {
-                x: (left_width + vbar_width) as i32,
-                y: 0,
-            })
-            .extent(vk::Extent2D {
-                width: data.swapchain_extent.width - left_width - vbar_width,
+                width: data.swapchain_extent.width,
                 height: data.swapchain_extent.height,
             })
             .build();
@@ -118,13 +107,13 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
         let left_render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(data.render_pass[0])
             .framebuffer(data.left_framebuffers[i])
-            .render_area(left_render_area)
+            .render_area(render_area)
             .clear_values(clear_values);
 
         let right_render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(data.render_pass[1])
             .framebuffer(data.right_framebuffers[i])
-            .render_area(right_render_area)
+            .render_area(render_area)
             .clear_values(clear_values);
 
         let loop_data = &[
@@ -189,8 +178,8 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
                 println!("Comparing");
                 comparator.compare(
                     *command_buffer,
-                    data.left_framebuffers[i],
-                    data.right_framebuffers[i],
+                    &data.resolve_image_view[0],
+                    &data.resolve_image_view[1],
                     framebuffers[i],
                 )?;
             }

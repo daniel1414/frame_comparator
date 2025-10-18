@@ -19,7 +19,7 @@ pub fn create_framebuffers(
     render_pass: &vk::RenderPass,
     index: usize,
 ) -> Result<Vec<vk::Framebuffer>> {
-    dbg!("creating framebuffers");
+    println!("creating framebuffers");
     let fb = data
         .swapchain_image_views
         .iter()
@@ -45,7 +45,7 @@ pub fn create_framebuffers(
             unsafe { device.create_framebuffer(&create_info, None) }
         })
         .collect::<Result<Vec<_>, _>>()?;
-    dbg!("finished");
+    println!("finished");
     Ok(fb)
 }
 
@@ -54,7 +54,7 @@ pub fn create_composite_framebuffers(
     data: &AppData,
     render_pass: &vk::RenderPass,
 ) -> Result<Vec<vk::Framebuffer>> {
-    dbg!("creating composite framebuffers");
+    println!("creating composite framebuffers");
     let fb = data
         .swapchain_image_views
         .iter()
@@ -72,6 +72,6 @@ pub fn create_composite_framebuffers(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    dbg!("finished");
+    println!("finished");
     Ok(fb)
 }

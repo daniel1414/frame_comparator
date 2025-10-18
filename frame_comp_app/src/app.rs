@@ -111,6 +111,7 @@ impl App {
             data.descriptor_pool,
             data.swapchain_format,
             data.swapchain_extent,
+            &data.resolve_image_view,
         )?);
 
         data.composite_framebuffers = match &data.frame_comparator {
@@ -192,6 +193,7 @@ impl App {
             self.data.descriptor_pool,
             self.data.swapchain_format,
             self.data.swapchain_extent,
+            &self.data.resolve_image_view,
         )?);
 
         self.data.composite_framebuffers = match &self.data.frame_comparator {
