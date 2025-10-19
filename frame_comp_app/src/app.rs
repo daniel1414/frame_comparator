@@ -1,3 +1,4 @@
+use std::mem::size_of;
 use std::ptr::copy_nonoverlapping as memcpy;
 use std::rc::Rc;
 use std::u64;
@@ -24,7 +25,7 @@ use crate::vulkan::buffers::uniform_buffer::{
 use crate::vulkan::buffers::vertex_buffer::create_vertex_buffer;
 use crate::vulkan::commands::{create_command_buffers, create_command_pool};
 use crate::vulkan::device::create_logical_device;
-use crate::vulkan::framebuffer::{create_composite_framebuffers, create_framebuffers};
+use crate::vulkan::framebuffer::create_framebuffers;
 use crate::vulkan::image::{
     create_color_objects, create_texture_image, create_texture_image_view, create_texture_sampler,
 };
@@ -44,7 +45,6 @@ pub const VALIDATION_LAYER: vk::ExtensionName =
 pub const PORTABILITY_MACOS_VERSION: Version = Version::new(1, 3, 216);
 
 /// The Vulkan App
-#[derive(Clone, Debug)]
 pub struct App {
     pub entry: Entry,
     pub instance: Instance,
@@ -108,12 +108,9 @@ impl App {
             data.descriptor_pool,
             data.swapchain_format,
             data.swapchain_extent,
-            &data.resolve_image_view,
             None,
         )?;
-        let comp_framebuffers =
-            create_composite_framebuffers(&device, &data, &comparator.render_pass())?;
-        data.frame_comparator = Some((comparator, comp_framebuffers));
+        data.frame_comparator = Some(comparator);
 
         create_command_buffers(&device, &mut data)?;
 
@@ -180,13 +177,9 @@ impl App {
             self.data.descriptor_pool,
             self.data.swapchain_format,
             self.data.swapchain_extent,
-            &self.data.resolve_image_view,
             None,
         )?;
-        let comp_framebuffers =
-            create_composite_framebuffers(&self.device, &self.data, &comparator.render_pass())?;
-
-        self.data.frame_comparator = Some((comparator, comp_framebuffers));
+        self.data.frame_comparator = Some(comparator);
 
         create_command_buffers(&self.device, &mut self.data)?;
 
@@ -239,6 +232,9 @@ impl App {
 
     fn destroy_swapchain(&mut self) {
         unsafe {
+            // Destroy the comparator to free up resources.
+            self.data.frame_comparator = None;
+
             for i in 0..2 {
                 // resolve images
                 self.device
@@ -287,12 +283,6 @@ impl App {
                 .right_framebuffers
                 .iter()
                 .for_each(|f| self.device.destroy_framebuffer(*f, None));
-
-            if let Some((_, framebuffers)) = self.data.frame_comparator.take() {
-                framebuffers
-                    .iter()
-                    .for_each(|f| self.device.destroy_framebuffer(*f, None));
-            }
 
             self.device.destroy_pipeline(self.data.left_pipeline, None);
             self.device.destroy_pipeline(self.data.right_pipeline, None);
@@ -533,7 +523,7 @@ impl App {
 }
 
 /// The Vulkan handles and associated properties used by our Vulkan app.
-#[derive(Clone, Debug, Default)]
+#[derive(Default)]
 pub struct AppData {
     pub messenger: vk::DebugUtilsMessengerEXT,
     pub physical_device: vk::PhysicalDevice,
@@ -622,5 +612,5 @@ pub struct AppData {
     pub vbar_percentage: f32,
 
     // Frame comparator
-    pub frame_comparator: Option<(FrameComparator, Vec<vk::Framebuffer>)>,
+    pub frame_comparator: Option<FrameComparator>,
 }

@@ -168,10 +168,11 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
             }
 
             // Compare the outputs
-            if let Some((comparator, framebuffers)) = &data.frame_comparator {
+            if let Some(comparator) = &data.frame_comparator {
                 let compare_info = FrameCompareInfo::builder()
                     .command_buffer(*command_buffer)
-                    .out_framebuffer(framebuffers[i])
+                    .image_views(data.resolve_image_view)
+                    .out_image_view(data.swapchain_image_views[i])
                     .divider_position(data.vbar_percentage)
                     .build()?;
 

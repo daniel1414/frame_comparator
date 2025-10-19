@@ -46,27 +46,3 @@ pub fn create_framebuffers(
         .collect::<Result<Vec<_>, _>>()?;
     Ok(fb)
 }
-
-pub fn create_composite_framebuffers(
-    device: &Device,
-    data: &AppData,
-    render_pass: &vk::RenderPass,
-) -> Result<Vec<vk::Framebuffer>> {
-    let fb = data
-        .swapchain_image_views
-        .iter()
-        .map(|i| {
-            let attachments = &[*i];
-            let create_info = vk::FramebufferCreateInfo::builder()
-                .render_pass(*render_pass)
-                .attachments(attachments)
-                .width(data.swapchain_extent.width)
-                .height(data.swapchain_extent.height)
-                .layers(1)
-                .build();
-
-            unsafe { device.create_framebuffer(&create_info, None) }
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(fb)
-}

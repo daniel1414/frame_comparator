@@ -76,7 +76,7 @@ pub fn create_descriptor_pool(device: &Device, data: &mut AppData) -> Result<()>
 
     let sampler_size = vk::DescriptorPoolSize::builder()
         .type_(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-        .descriptor_count(data.swapchain_images.len() as u32 * 2);
+        .descriptor_count(data.swapchain_images.len() as u32 * 20);
 
     let pool_sizes = &[ubo_size, sampler_size];
     let info = vk::DescriptorPoolCreateInfo::builder()
