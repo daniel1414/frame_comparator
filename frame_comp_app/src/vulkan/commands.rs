@@ -172,8 +172,8 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
                 let compare_info = FrameCompareInfo::builder()
                     .command_buffer(*command_buffer)
                     .out_framebuffer(framebuffers[i])
-                    .position(data.vbar_percentage)
-                    .build();
+                    .divider_position(data.vbar_percentage)
+                    .build()?;
 
                 comparator.compare(&compare_info)?;
             }
