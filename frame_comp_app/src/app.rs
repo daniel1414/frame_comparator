@@ -6,10 +6,10 @@ use anyhow::{Result, anyhow};
 use cgmath::{Deg, point3, vec3};
 use frame_comp::FrameComparator;
 use std::time::Instant;
-use vk::{KhrSurfaceExtension, KhrSwapchainExtension};
+use vk::{KhrSurfaceExtensionInstanceCommands, KhrSwapchainExtensionDeviceCommands};
 use vulkanalia::loader::{LIBRARY, LibloadingLoader};
 use vulkanalia::prelude::v1_3::*;
-use vulkanalia::vk::ExtDebugUtilsExtension;
+use vulkanalia::vk::ExtDebugUtilsExtensionInstanceCommands;
 
 use vulkanalia::Version;
 use vulkanalia::window as vk_window;
@@ -196,6 +196,7 @@ impl App {
     /// Destroys our Vulkan app.
     pub fn destroy(&mut self) {
         unsafe {
+            self.device.device_wait_idle().unwrap();
             self.destroy_swapchain();
 
             self.device.destroy_sampler(self.data.texture_sampler, None);
@@ -519,6 +520,15 @@ impl App {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn update(&mut self, window: &Window, mouse_x: f64, mouse_left_pressed: bool) {
+        let window_size = window.inner_size();
+        let margin = 10.0;
+        if mouse_left_pressed && mouse_x < window_size.width as f64 - 10.0 && mouse_x > 10.0 {
+            self.data.vbar_percentage = mouse_x as f32 / window_size.width as f32;
+            self.resized = true;
+        }
     }
 }
 

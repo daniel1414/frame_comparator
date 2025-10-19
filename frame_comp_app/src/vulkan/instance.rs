@@ -5,7 +5,7 @@ use anyhow::Result;
 use log::*;
 use std::collections::HashSet;
 use vulkanalia::prelude::v1_3::*;
-use vulkanalia::vk::ExtDebugUtilsExtension;
+use vulkanalia::vk::ExtDebugUtilsExtensionInstanceCommands;
 use vulkanalia::window as vk_window;
 use winit::window::Window;
 

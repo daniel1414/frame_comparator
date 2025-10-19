@@ -1,8 +1,8 @@
 use crate::app::AppData;
 use anyhow::Result;
 use vulkanalia::prelude::v1_3::*;
-use vulkanalia::vk::KhrSwapchainExtension;
-use vulkanalia::{vk, vk::KhrSurfaceExtension};
+use vulkanalia::vk::KhrSwapchainExtensionDeviceCommands;
+use vulkanalia::{vk, vk::KhrSurfaceExtensionInstanceCommands};
 use winit::window::Window;
 
 use super::image::create_image_view;

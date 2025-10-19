@@ -167,10 +167,8 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
                 device.cmd_end_render_pass(*command_buffer);
             }
 
-            println!("About to compare()");
             // Compare the outputs
             if let Some((comparator, framebuffers)) = &data.frame_comparator {
-                println!("Comparing");
                 let compare_info = FrameCompareInfo::builder()
                     .command_buffer(*command_buffer)
                     .out_framebuffer(framebuffers[i])

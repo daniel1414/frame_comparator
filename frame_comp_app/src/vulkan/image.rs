@@ -19,13 +19,20 @@ pub fn create_texture_image(
     let image = File::open(image_path)
         .expect(format!("Failed to open the image resource {image_path}").as_str());
 
-    let decoder = png::Decoder::new(image);
+    let decoder = png::Decoder::new(std::io::BufReader::new(image));
     let mut reader = decoder.read_info()?;
 
-    let mut pixels = vec![0; reader.output_buffer_size()];
+    let mut pixels = vec![
+        0;
+        reader
+            .output_buffer_size()
+            .expect("Failed to get the image buffer size.")
+    ];
     reader.next_frame(&mut pixels)?;
 
-    let size = reader.output_buffer_size() as u64;
+    let size = reader
+        .output_buffer_size()
+        .expect("Failed to get the image buffer size.") as u64;
     let (width, height) = reader.info().size();
 
     if width != 1024 || height != 1024 || reader.info().color_type != png::ColorType::Rgba {
