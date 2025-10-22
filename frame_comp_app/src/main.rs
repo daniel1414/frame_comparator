@@ -6,6 +6,7 @@
 )]
 
 mod app;
+mod comparator;
 mod vulkan;
 
 use anyhow::Result;

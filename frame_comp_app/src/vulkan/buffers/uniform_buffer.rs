@@ -1,7 +1,8 @@
 use anyhow::Result;
+use frame_comp::FrameComparator;
 use vulkanalia::prelude::v1_3::*;
 
-use crate::app::AppData;
+use crate::app::{AppData, MAX_FRAMES_IN_FLIGHT};
 
 use super::buffer::create_buffer;
 
@@ -76,7 +77,11 @@ pub fn create_descriptor_pool(device: &Device, data: &mut AppData) -> Result<()>
 
     let sampler_size = vk::DescriptorPoolSize::builder()
         .type_(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-        .descriptor_count(data.swapchain_images.len() as u32 * 20);
+        .descriptor_count(
+            // One descriptor per image view per swapchain image + the amout the frame comparator consumes.
+            data.swapchain_images.len() as u32 * 2
+                + FrameComparator::image_sampler_count() * MAX_FRAMES_IN_FLIGHT as u32,
+        );
 
     let pool_sizes = &[ubo_size, sampler_size];
     let info = vk::DescriptorPoolCreateInfo::builder()

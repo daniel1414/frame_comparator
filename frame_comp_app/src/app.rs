@@ -16,6 +16,7 @@ use vulkanalia::Version;
 use vulkanalia::window as vk_window;
 use winit::window::Window;
 
+use crate::comparator::create_comparators;
 use crate::vulkan::buffers::depth_buffer::create_depth_objects;
 use crate::vulkan::buffers::index_buffer::create_index_buffer;
 use crate::vulkan::buffers::uniform_buffer::{
@@ -103,14 +104,7 @@ impl App {
         create_descriptor_pool(&device, &mut data)?;
         create_descriptor_sets(&device, &mut data)?;
 
-        let comparator = FrameComparator::new(
-            unsafe { Rc::from_raw(&device) },
-            data.descriptor_pool,
-            data.swapchain_format,
-            data.swapchain_extent,
-            None,
-        )?;
-        data.frame_comparator = Some(comparator);
+        data.frame_comparators = create_comparators(&device, &data)?;
 
         create_command_buffers(&device, &mut data)?;
 
@@ -172,14 +166,7 @@ impl App {
             .image_usage_fences
             .resize(self.data.swapchain_images.len(), vk::Fence::null());
 
-        let comparator = FrameComparator::new(
-            unsafe { Rc::from_raw(&self.device) },
-            self.data.descriptor_pool,
-            self.data.swapchain_format,
-            self.data.swapchain_extent,
-            None,
-        )?;
-        self.data.frame_comparator = Some(comparator);
+        self.data.frame_comparators = create_comparators(&self.device, &self.data)?;
 
         create_command_buffers(&self.device, &mut self.data)?;
 
@@ -233,7 +220,7 @@ impl App {
     fn destroy_swapchain(&mut self) {
         unsafe {
             // Destroy the comparator to free up resources.
-            self.data.frame_comparator = None;
+            self.data.frame_comparators = None;
 
             for i in 0..2 {
                 // resolve images
@@ -612,5 +599,5 @@ pub struct AppData {
     pub vbar_percentage: f32,
 
     // Frame comparator
-    pub frame_comparator: Option<FrameComparator>,
+    pub frame_comparators: Option<Vec<FrameComparator>>,
 }
