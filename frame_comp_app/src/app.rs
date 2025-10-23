@@ -50,7 +50,7 @@ pub struct App {
     pub entry: Entry,
     pub instance: Instance,
     pub data: AppData,
-    pub device: Device,
+    pub device: Rc<Device>,
     pub frame: usize,
     pub resized: bool,
     pub start: Instant,
@@ -69,6 +69,8 @@ impl App {
         data.surface = unsafe { vk_window::create_surface(&instance, &window, &window) }?;
         pick_physical_device(&instance, &mut data)?;
         let device = create_logical_device(&entry, &instance, &mut data)?;
+        let device = Rc::new(device);
+        
         create_swapchain(window, &instance, &device, &mut data)?;
         create_swapchain_image_views(&device, &mut data)?;
 

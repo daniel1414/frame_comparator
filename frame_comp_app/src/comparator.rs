@@ -2,24 +2,28 @@ use std::rc::Rc;
 use vulkanalia::prelude::v1_3::*;
 
 use anyhow::Result;
-use frame_comp::FrameComparator;
+use frame_comp::{FrameComparator, FrameComparatorCreateInfo};
 
 use crate::app::AppData;
 
-pub fn create_comparators(device: &Device, data: &AppData) -> Result<Option<Vec<FrameComparator>>> {
+pub fn create_comparators(
+    device: &Rc<Device>,
+    data: &AppData,
+) -> Result<Option<Vec<FrameComparator>>> {
     let comparators = data
         .swapchain_image_views
         .iter()
         .map(|i| {
-            FrameComparator::new(
-                unsafe { Rc::from_raw(device) },
-                data.descriptor_pool,
-                data.swapchain_format,
-                data.swapchain_extent,
-                None,
-                data.resolve_image_view,
-                *i,
-            )
+            let info = FrameComparatorCreateInfo::builder()
+                .device(Rc::clone(device))
+                .descriptor_pool(data.descriptor_pool)
+                .format(data.swapchain_format)
+                .extent(data.swapchain_extent)
+                .in_image_views(data.resolve_image_view)
+                .out_image_view(*i)
+                .build()?;
+
+            FrameComparator::new(&info)
         })
         .collect::<Result<Vec<_>, _>>()?;
 
