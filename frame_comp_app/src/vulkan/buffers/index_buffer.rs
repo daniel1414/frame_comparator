@@ -17,7 +17,7 @@ pub fn create_index_buffer(instance: &Instance, device: &Device, data: &mut AppD
         data,
         size,
         vk::BufferUsageFlags::TRANSFER_SRC,
-        vk::MemoryPropertyFlags::HOST_COHERENT | vk::MemoryPropertyFlags::HOST_COHERENT,
+        vk::MemoryPropertyFlags::HOST_COHERENT | vk::MemoryPropertyFlags::HOST_VISIBLE,
     )?;
 
     unsafe {

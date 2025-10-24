@@ -64,6 +64,20 @@ pub fn create_descriptor_set_layout(device: &Device, data: &mut AppData) -> Resu
 
     data.descriptor_set_layout = unsafe { device.create_descriptor_set_layout(&info, None) }?;
 
+    // Descriptor layout for the second subpass. We need just one image sampler.
+    let sampler_binding = vk::DescriptorSetLayoutBinding::builder()
+        .binding(0)
+        .descriptor_count(1)
+        .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+        .stage_flags(vk::ShaderStageFlags::FRAGMENT);
+    let bindings = &[sampler_binding];
+    let info = vk::DescriptorSetLayoutCreateInfo::builder()
+        .bindings(bindings)
+        .build();
+
+    data.second_descriptor_set_layout =
+        unsafe { device.create_descriptor_set_layout(&info, None) }?;
+
     Ok(())
 }
 
@@ -79,14 +93,14 @@ pub fn create_descriptor_pool(device: &Device, data: &mut AppData) -> Result<()>
         .type_(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
         .descriptor_count(
             // One descriptor per image view per swapchain image + the amout the frame comparator consumes.
-            data.swapchain_images.len() as u32 * 2
+            data.swapchain_images.len() as u32 * 4
                 + FrameComparator::image_sampler_count() * MAX_FRAMES_IN_FLIGHT as u32,
         );
 
     let pool_sizes = &[ubo_size, sampler_size];
     let info = vk::DescriptorPoolCreateInfo::builder()
         .pool_sizes(pool_sizes)
-        .max_sets(data.swapchain_images.len() as u32 * 2);
+        .max_sets(data.swapchain_images.len() as u32 * 4);
 
     data.descriptor_pool = unsafe { device.create_descriptor_pool(&info, None) }?;
 
@@ -121,6 +135,15 @@ pub fn create_descriptor_sets(device: &Device, data: &mut AppData) -> Result<()>
         .set_layouts(&layouts);
 
     data.descriptor_sets = unsafe { device.allocate_descriptor_sets(&info) }?;
+
+    // For the second subpass
+    let layouts = vec![data.second_descriptor_set_layout; data.swapchain_images.len()];
+
+    let info = vk::DescriptorSetAllocateInfo::builder()
+        .descriptor_pool(data.descriptor_pool)
+        .set_layouts(&layouts);
+
+    data.second_descriptor_sets = unsafe { device.allocate_descriptor_sets(&info) }?;
 
     for i in 0..data.swapchain_images.len() {
         let buffer_info = vk::DescriptorBufferInfo::builder()
@@ -162,6 +185,27 @@ pub fn create_descriptor_sets(device: &Device, data: &mut AppData) -> Result<()>
                 &[] as &[vk::CopyDescriptorSet],
             )
         };
+
+        // Second subpass
+        let image_info = vk::DescriptorImageInfo::builder()
+            .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            .image_view(data.depth_res_image_view)
+            .sampler(data.depth_sampler)
+            .build();
+
+        let image_infos = &[image_info];
+
+        let sampler_write = vk::WriteDescriptorSet::builder()
+            .dst_set(data.second_descriptor_sets[i])
+            .dst_binding(0)
+            .dst_array_element(0)
+            .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+            .image_info(image_infos)
+            .build();
+
+        unsafe {
+            device.update_descriptor_sets(&[sampler_write], &[] as &[vk::CopyDescriptorSet]);
+        }
     }
 
     Ok(())

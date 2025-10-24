@@ -16,30 +16,28 @@ pub fn create_render_pass(
     device: &Device,
     data: &mut AppData,
 ) -> Result<vk::RenderPass> {
-    let color_attachment = vk::AttachmentDescription::builder()
+    // === ATTACHMENTS ===
+
+    // Attachment 0: Multisampled color attachment for scene rendering.
+    let color_attachment = vk::AttachmentDescription2::builder()
         // Format of the color attachment should be same as the swapchain images.
         .format(data.swapchain_format)
         // For multisampling (anti-aliasing)
         .samples(data.msaa_samples)
         // Defines what happens to the attachment at the start of rendering
         .load_op(vk::AttachmentLoadOp::CLEAR)
-        // What happens to the attachment after rendering
-        .store_op(vk::AttachmentStoreOp::STORE)
+        // What happens to the attachment after rendering - we resolve it, so we don't care
+        .store_op(vk::AttachmentStoreOp::DONT_CARE)
         .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
         .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
         // Expected layout of the attachment before rendering.
         .initial_layout(vk::ImageLayout::UNDEFINED)
         // Defines what the final layout of the attachment should be after rendering.
-        .final_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+        .final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
         .build();
 
-    let color_attachment_ref = vk::AttachmentReference::builder()
-        .attachment(0)
-        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
-
-    let color_attachments = &[color_attachment_ref];
-
-    let depth_stencil_attachment = vk::AttachmentDescription::builder()
+    // Attachment 1: Multisampled depth (stencil) attachment for scene rendering.
+    let depth_stencil_attachment = vk::AttachmentDescription2::builder()
         .format(get_depth_format(instance, data)?)
         .samples(data.msaa_samples)
         .load_op(vk::AttachmentLoadOp::CLEAR)
@@ -47,18 +45,18 @@ pub fn create_render_pass(
         // has finished. Contrary to the color attachment, which is used to
         // present images to the screen. This may allow the hardware to perform
         // additional optimizations.
+        // Edit: We do want to sample from the depth data in one of the render passes.
+        // Edit: Edit: we resolve it, so we don't care.
         .store_op(vk::AttachmentStoreOp::DONT_CARE)
         .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
         .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
         .initial_layout(vk::ImageLayout::UNDEFINED)
+        // After we're done with it, we want to sample from this attachment in subpass 1
         .final_layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
         .build();
 
-    let depth_stencil_attachment_ref = vk::AttachmentReference::builder()
-        .attachment(1)
-        .layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-    let color_resolve_attachment = vk::AttachmentDescription::builder()
+    // Attachment 2: Resolved color attachment with the rendered scene (single-sampled).
+    let color_resolve_attachment = vk::AttachmentDescription2::builder()
         .format(data.swapchain_format)
         .samples(vk::SampleCountFlags::_1)
         .load_op(vk::AttachmentLoadOp::DONT_CARE)
@@ -69,68 +67,130 @@ pub fn create_render_pass(
         .final_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
         .build();
 
-    let color_resolve_attachment_ref = vk::AttachmentReference::builder()
+    // Attachment 3: Color attachment for grayscale depth output (single-sampled)
+    let grayscale_color_attachment = vk::AttachmentDescription2::builder()
+        .format(data.swapchain_format)
+        .load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .store_op(vk::AttachmentStoreOp::STORE)
+        .initial_layout(vk::ImageLayout::UNDEFINED)
+        .samples(vk::SampleCountFlags::_1)
+        .final_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+        .samples(vk::SampleCountFlags::_1)
+        .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+        .build();
+
+    // Attachment 4: Resolved depth attachment (single-sampled)
+    let depth_resolve_attachment = vk::AttachmentDescription2::builder()
+        .format(get_depth_format(instance, data)?)
+        .samples(vk::SampleCountFlags::_1)
+        .initial_layout(vk::ImageLayout::UNDEFINED)
+        .final_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+        .load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .store_op(vk::AttachmentStoreOp::STORE)
+        .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+        .build();
+
+    // === Subpass 0: Scene rendering ===
+
+    let color_attachment_ref0 = vk::AttachmentReference2::builder()
+        .attachment(0)
+        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+        .build();
+
+    let depth_stencil_attachment_ref0 = vk::AttachmentReference2::builder()
+        .attachment(1)
+        .layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+        .build();
+
+    let color_resolve_attachment_ref0 = vk::AttachmentReference2::builder()
         .attachment(2)
-        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+        .build();
 
-    let resolve_attachments = &[color_resolve_attachment_ref];
+    let depth_resolve_attachment_ref = vk::AttachmentReference2::builder()
+        .attachment(3)
+        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+        .build();
 
-    let subpass = vk::SubpassDescription::builder()
+    let mut depth_stencil_resolve = vk::SubpassDescriptionDepthStencilResolve::builder()
+        .depth_resolve_mode(vk::ResolveModeFlags::SAMPLE_ZERO)
+        .stencil_resolve_mode(vk::ResolveModeFlags::NONE)
+        .depth_stencil_resolve_attachment(&depth_resolve_attachment_ref)
+        .build();
+
+    let subpass0 = vk::SubpassDescription2::builder()
         .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-        .color_attachments(color_attachments)
-        .depth_stencil_attachment(&depth_stencil_attachment_ref)
-        .resolve_attachments(resolve_attachments);
+        .color_attachments(&[color_attachment_ref0])
+        .depth_stencil_attachment(&depth_stencil_attachment_ref0)
+        .resolve_attachments(&[color_resolve_attachment_ref0])
+        .push_next(&mut depth_stencil_resolve)
+        .build();
 
-    // This dependency makes sure that the swapchain image is ready to be written to
-    // in the first subpass. Ensures pipeline and memory synchronization.
-    let dependency = vk::SubpassDependency::builder()
-        // The source of the dependency is not part of the render pass. It refers to operations
-        // outside the render pass, such as image layout transitions after aquiring a swapchain image
-        // and any preceding rendering or compute operations that could affect the attachments.
+    // === Subpass 1: Depth Visualization ===
+
+    let color_attachment_ref1 = vk::AttachmentReference2::builder()
+        .attachment(4)
+        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+        .build();
+
+    let depth_input_attachment_ref1 = vk::AttachmentReference2::builder()
+        .attachment(3)
+        .layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+        .aspect_mask(vk::ImageAspectFlags::DEPTH);
+
+    let subpass1 = vk::SubpassDescription2::builder()
+        .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
+        .color_attachments(&[color_attachment_ref1])
+        .input_attachments(&[depth_input_attachment_ref1])
+        .build();
+
+    // === DEPENDENCIES ===
+
+    let dependency0 = vk::SubpassDependency2::builder()
         .src_subpass(vk::SUBPASS_EXTERNAL)
-        // The destination subpass is the one and only we have, which has been created above.
         .dst_subpass(0)
-        // Specifies the pipeline stage(s) in the source scope that need to be synchronized.
-        // COLOR_ATTACHMENT_OUTPUT represents the stage where color attachment writes occur.
-        // In this case, Vulkan ensures that color attachment output from operations
-        // outside the render pass is finished before continuing (e.g. presenting to the user).
         .src_stage_mask(
             vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT
                 | vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
         )
-        // Specifies the memory access type(s) in the source scope that need synchronization.
-        // In this case there are no specific memory accesses that need synchronization in this dependency.
         .src_access_mask(vk::AccessFlags::empty())
-        // Specifies the pipeline stage(s) in the destination scope that depend on the source.
-        // Again, this is COLOR_ATTACHMENT_OUTPUT, meaning the rendering commands in the first
-        // subpass that write to the color attachment depend on the completion of prior operations.
-        // This ensures that the destination subpass starts writing to the color attachment
-        // only after it's safe to do so.
         .dst_stage_mask(
             vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT
                 | vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
         )
-        // Specifies the memory access type(s) required in the destination scope.
-        // COLOR_ATTACHMENT_WRITE indicates that the subpass will write to the color attachment.
-        // This ensures proper synchronization of memory for writing, so the render pass
-        // doesn't overwrite data that's still being processed from prior operations.
         .dst_access_mask(
             vk::AccessFlags::COLOR_ATTACHMENT_WRITE
                 | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-        );
+        )
+        .build();
+
+    let dependency1 = vk::SubpassDependency2::builder()
+        .src_subpass(0)
+        .dst_subpass(1)
+        .src_stage_mask(vk::PipelineStageFlags::LATE_FRAGMENT_TESTS)
+        .src_access_mask(vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE)
+        .dst_stage_mask(vk::PipelineStageFlags::FRAGMENT_SHADER)
+        .dst_access_mask(vk::AccessFlags::SHADER_READ)
+        .build();
 
     let attachments = &[
         color_attachment,
         depth_stencil_attachment,
         color_resolve_attachment,
+        depth_resolve_attachment,
+        grayscale_color_attachment,
     ];
-    let subpasses = &[subpass];
-    let dependencies = &[dependency];
 
-    let info = vk::RenderPassCreateInfo::builder()
+    let subpasses = &[subpass0, subpass1];
+    let dependencies = &[dependency0, dependency1];
+
+    let info = vk::RenderPassCreateInfo2::builder()
         .attachments(attachments)
         .subpasses(subpasses)
-        .dependencies(dependencies);
+        .dependencies(dependencies)
+        .build();
 
-    Ok(unsafe { device.create_render_pass(&info, None) }?)
+    Ok(unsafe { device.create_render_pass2(&info, None) }?)
 }

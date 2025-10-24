@@ -17,17 +17,24 @@ pub fn create_framebuffers(
     device: &Device,
     data: &AppData,
     render_pass: &vk::RenderPass,
-    index: usize,
 ) -> Result<Vec<vk::Framebuffer>> {
     let fb = data
         .swapchain_image_views
         .iter()
         .map(|i| {
-            let attachments = &[
-                data.color_image_view[index],
-                data.depth_image_view[index],
-                data.resolve_image_view[index],
+            let attachments: &[vk::ImageView] = &[
+                // Color attachment for scene output.
+                data.color_image_view[0],
+                // Depth resolve attachment for scene subpass.
+                data.depth_msaa_image_view,
+                // Color resolve attachment for scene subpass.
+                data.resolve_image_view,
+                // Depth attachment for grayscale image input.
+                data.depth_res_image_view,
+                // Color attachment for depth grayscale output.
+                data.color_image_view[1],
             ];
+
             let create_info = vk::FramebufferCreateInfo::builder()
                 .render_pass(*render_pass)
                 // Each attachment corresponds to one of the attachments

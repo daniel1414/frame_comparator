@@ -33,7 +33,7 @@ use crate::vulkan::image::{
 use crate::vulkan::instance::create_instance;
 use crate::vulkan::model::load_model;
 use crate::vulkan::physical_device::pick_physical_device;
-use crate::vulkan::pipeline::create_pipeline;
+use crate::vulkan::pipeline::{create_first_pipeline, create_second_pipeline};
 use crate::vulkan::render_pass::create_render_pass;
 use crate::vulkan::swapchain::{create_swapchain, create_swapchain_image_views};
 use crate::vulkan::synchronization::create_sync_objects;
@@ -70,31 +70,30 @@ impl App {
         pick_physical_device(&instance, &mut data)?;
         let device = create_logical_device(&entry, &instance, &mut data)?;
         let device = Rc::new(device);
-        
+
         create_swapchain(window, &instance, &device, &mut data)?;
         create_swapchain_image_views(&device, &mut data)?;
 
-        data.render_pass[0] = create_render_pass(&instance, &device, &mut data)?;
-        data.render_pass[1] = create_render_pass(&instance, &device, &mut data)?;
+        let samples = data.msaa_samples;
+        data.render_pass = create_render_pass(&instance, &device, &mut data)?;
 
         create_descriptor_set_layout(&device, &mut data)?;
 
         // One pipeline per render pass
-        (data.left_pipeline_layout, data.left_pipeline) =
-            create_pipeline(&device, &data, &data.render_pass[0])?;
+        (data.first_pipeline_layout, data.first_pipeline) =
+            create_first_pipeline(&device, &data, &data.render_pass, samples)?;
 
-        (data.right_pipeline_layout, data.right_pipeline) =
-            create_pipeline(&device, &data, &data.render_pass[1])?;
+        (data.second_pipeline_layout, data.second_pipeline) =
+            create_second_pipeline(&device, &data, &data.render_pass)?;
 
         create_command_pool(&instance, &device, &mut data)?;
 
         for i in 0..2 {
             create_color_objects(&instance, &device, &mut data, i)?;
-            create_depth_objects(&instance, &device, &mut data, i)?;
         }
+        create_depth_objects(&instance, &device, &mut data)?;
 
-        data.left_framebuffers = create_framebuffers(&device, &data, &data.render_pass[0], 0)?;
-        data.right_framebuffers = create_framebuffers(&device, &data, &data.render_pass[1], 1)?;
+        data.framebuffers = create_framebuffers(&device, &data, &data.render_pass)?;
 
         create_texture_image(&instance, &device, &mut data)?;
         create_texture_image_view(&device, &mut data)?;
@@ -138,27 +137,24 @@ impl App {
         create_swapchain(window, &self.instance, &self.device, &mut self.data)?;
         create_swapchain_image_views(&self.device, &mut self.data)?;
 
-        self.data.render_pass[0] =
-            create_render_pass(&self.instance, &self.device, &mut self.data)?;
-        self.data.render_pass[1] =
-            create_render_pass(&self.instance, &self.device, &mut self.data)?;
+        let samples = self.data.msaa_samples;
 
-        (self.data.left_pipeline_layout, self.data.left_pipeline) =
-            create_pipeline(&self.device, &self.data, &self.data.render_pass[0])?;
+        self.data.render_pass = create_render_pass(&self.instance, &self.device, &mut self.data)?;
 
-        (self.data.right_pipeline_layout, self.data.right_pipeline) =
-            create_pipeline(&self.device, &self.data, &self.data.render_pass[1])?;
+        (self.data.first_pipeline_layout, self.data.first_pipeline) =
+            create_first_pipeline(&self.device, &self.data, &self.data.render_pass, samples)?;
+
+        (self.data.second_pipeline_layout, self.data.second_pipeline) =
+            create_second_pipeline(&self.device, &self.data, &self.data.render_pass)?;
 
         for i in 0..2 {
             create_color_objects(&self.instance, &self.device, &mut self.data, i)?;
-            create_depth_objects(&self.instance, &self.device, &mut self.data, i)?;
         }
 
-        self.data.left_framebuffers =
-            create_framebuffers(&self.device, &self.data, &self.data.render_pass[0], 0)?;
+        create_depth_objects(&self.instance, &self.device, &mut self.data)?;
 
-        self.data.right_framebuffers =
-            create_framebuffers(&self.device, &self.data, &self.data.render_pass[1], 1)?;
+        self.data.framebuffers =
+            create_framebuffers(&self.device, &self.data, &self.data.render_pass)?;
 
         create_uniform_buffers(&self.instance, &self.device, &mut self.data)?;
         create_descriptor_pool(&self.device, &mut self.data)?;
@@ -181,12 +177,15 @@ impl App {
             self.device.device_wait_idle().unwrap();
             self.destroy_swapchain();
 
+            self.device.destroy_sampler(self.data.depth_sampler, None);
             self.device.destroy_sampler(self.data.texture_sampler, None);
             self.device
                 .destroy_image_view(self.data.texture_image_view, None);
             self.device.destroy_image(self.data.texture_image, None);
             self.device
                 .free_memory(self.data.texture_image_memory, None);
+            self.device
+                .destroy_descriptor_set_layout(self.data.second_descriptor_set_layout, None);
             self.device
                 .destroy_descriptor_set_layout(self.data.descriptor_set_layout, None);
             self.device.destroy_buffer(self.data.vertex_buffer, None);
@@ -224,29 +223,37 @@ impl App {
             // Destroy the comparator to free up resources.
             self.data.frame_comparators = None;
 
-            for i in 0..2 {
-                // resolve images
-                self.device
-                    .destroy_image_view(self.data.resolve_image_view[i], None);
-                self.device
-                    .free_memory(self.data.resolve_image_memory[i], None);
-                self.device.destroy_image(self.data.resolve_image[i], None);
+            // resolve image
+            self.device
+                .destroy_image_view(self.data.resolve_image_view, None);
+            self.device
+                .free_memory(self.data.resolve_image_memory, None);
+            self.device.destroy_image(self.data.resolve_image, None);
 
+            for i in 0..2 {
                 // color images
                 self.device
                     .destroy_image_view(self.data.color_image_view[i], None);
                 self.device
                     .free_memory(self.data.color_image_memory[i], None);
                 self.device.destroy_image(self.data.color_image[i], None);
-
-                // depth images
-                self.device
-                    .destroy_image_view(self.data.depth_image_view[i], None);
-                self.device
-                    .free_memory(self.data.depth_image_memory[i], None);
-                self.device.destroy_image(self.data.depth_image[i], None);
             }
 
+            // depth image
+            self.device
+                .destroy_image_view(self.data.depth_msaa_image_view, None);
+            self.device
+                .free_memory(self.data.depth_msaa_image_memory, None);
+            self.device.destroy_image(self.data.depth_msaa_image, None);
+
+            // depth resolve image
+            self.device
+                .destroy_image_view(self.data.depth_res_image_view, None);
+            self.device
+                .free_memory(self.data.depth_res_image_memory, None);
+            self.device.destroy_image(self.data.depth_res_image, None);
+
+            // Descriptor pool
             self.device
                 .destroy_descriptor_pool(self.data.descriptor_pool, None);
             self.data
@@ -264,27 +271,20 @@ impl App {
                 .free_command_buffers(self.data.command_pool, &self.data.command_buffers);
 
             self.data
-                .left_framebuffers
+                .framebuffers
                 .iter()
                 .for_each(|f| self.device.destroy_framebuffer(*f, None));
 
-            self.data
-                .right_framebuffers
-                .iter()
-                .for_each(|f| self.device.destroy_framebuffer(*f, None));
-
-            self.device.destroy_pipeline(self.data.left_pipeline, None);
-            self.device.destroy_pipeline(self.data.right_pipeline, None);
+            self.device.destroy_pipeline(self.data.first_pipeline, None);
+            self.device
+                .destroy_pipeline(self.data.second_pipeline, None);
 
             self.device
-                .destroy_pipeline_layout(self.data.left_pipeline_layout, None);
+                .destroy_pipeline_layout(self.data.first_pipeline_layout, None);
             self.device
-                .destroy_pipeline_layout(self.data.right_pipeline_layout, None);
+                .destroy_pipeline_layout(self.data.second_pipeline_layout, None);
 
-            self.device
-                .destroy_render_pass(self.data.render_pass[0], None);
-            self.device
-                .destroy_render_pass(self.data.render_pass[1], None);
+            self.device.destroy_render_pass(self.data.render_pass, None);
 
             self.data
                 .swapchain_image_views
@@ -426,10 +426,7 @@ impl App {
     fn update_uniform_buffer(&self, image_index: usize) -> Result<()> {
         let time = self.start.elapsed().as_secs_f32();
 
-        let model = Mat4::from_axis_angle(
-            vec3(0.0, 0.0, 1.0),
-            Deg(45.0), // * time
-        );
+        let model = Mat4::from_axis_angle(vec3(0.0, 0.0, 1.0), Deg(45.0) /*  * time */);
 
         let view = Mat4::look_at_rh(
             point3(0.0, 2.5, 2.5),
@@ -467,8 +464,8 @@ impl App {
             * cgmath::perspective(
                 Deg(45.0),
                 self.data.swapchain_extent.width as f32 / self.data.swapchain_extent.height as f32,
-                0.1,
-                10.0,
+                2.5,
+                4.0,
             );
 
         // Passing in individual matrices to the GPU and multiplying them in the vertex shader
@@ -526,16 +523,16 @@ pub struct AppData {
     pub swapchain_images: Vec<vk::Image>,
     pub swapchain_image_views: Vec<vk::ImageView>,
     // 0 for the left side, 1 for the right side
-    pub render_pass: [vk::RenderPass; 2],
+    pub render_pass: vk::RenderPass,
 
     /// The layout of the descriptor set for the UBO that holds the MVP matrix.
     pub descriptor_set_layout: vk::DescriptorSetLayout,
-    pub left_pipeline_layout: vk::PipelineLayout,
-    pub right_pipeline_layout: vk::PipelineLayout,
-    pub left_pipeline: vk::Pipeline,
-    pub right_pipeline: vk::Pipeline,
-    pub left_framebuffers: Vec<vk::Framebuffer>,
-    pub right_framebuffers: Vec<vk::Framebuffer>,
+    pub second_descriptor_set_layout: vk::DescriptorSetLayout,
+    pub first_pipeline_layout: vk::PipelineLayout,
+    pub second_pipeline_layout: vk::PipelineLayout,
+    pub first_pipeline: vk::Pipeline,
+    pub second_pipeline: vk::Pipeline,
+    pub framebuffers: Vec<vk::Framebuffer>,
 
     pub command_pool: vk::CommandPool,
     pub command_buffers: Vec<vk::CommandBuffer>,
@@ -576,6 +573,7 @@ pub struct AppData {
 
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_sets: Vec<vk::DescriptorSet>,
+    pub second_descriptor_sets: Vec<vk::DescriptorSet>,
 
     /// Resources for textures
     pub mip_levels: u32,
@@ -583,20 +581,27 @@ pub struct AppData {
     pub texture_image_memory: vk::DeviceMemory,
     pub texture_image_view: vk::ImageView,
     pub texture_sampler: vk::Sampler,
+    pub depth_sampler: vk::Sampler,
 
-    /// Resources for the depth buffer
-    pub depth_image: [vk::Image; 2],
-    pub depth_image_memory: [vk::DeviceMemory; 2],
-    pub depth_image_view: [vk::ImageView; 2],
+    /// The multisampled depth buffer
+    pub depth_msaa_image: vk::Image,
+    pub depth_msaa_image_memory: vk::DeviceMemory,
+    pub depth_msaa_image_view: vk::ImageView,
 
-    // Resources for multisampling
+    // The resolved depth buffer
+    pub depth_res_image: vk::Image,
+    pub depth_res_image_memory: vk::DeviceMemory,
+    pub depth_res_image_view: vk::ImageView,
+
+    // Resources color attachments - idx 0 for scene output, idx 1 for depth grayscale output
     pub color_image: [vk::Image; 2],
     pub color_image_memory: [vk::DeviceMemory; 2],
     pub color_image_view: [vk::ImageView; 2],
 
-    pub resolve_image: [vk::Image; 2],
-    pub resolve_image_memory: [vk::DeviceMemory; 2],
-    pub resolve_image_view: [vk::ImageView; 2],
+    // Resolve color attachment for scene output
+    pub resolve_image: vk::Image,
+    pub resolve_image_memory: vk::DeviceMemory,
+    pub resolve_image_view: vk::ImageView,
 
     pub vbar_percentage: f32,
 

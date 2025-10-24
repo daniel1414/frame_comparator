@@ -8,12 +8,21 @@ use anyhow::{Result, anyhow};
 use log::*;
 use vulkanalia::prelude::v1_3::*;
 
-pub const DEVICE_EXTENSIONS: &[vk::ExtensionName] = &[vk::KHR_SWAPCHAIN_EXTENSION.name];
+pub const DEVICE_EXTENSIONS: &[vk::ExtensionName] = &[
+    vk::KHR_SWAPCHAIN_EXTENSION.name,
+    vk::KHR_DEPTH_STENCIL_RESOLVE_EXTENSION.name,
+    vk::KHR_CREATE_RENDERPASS2_EXTENSION.name,
+    vk::KHR_MULTIVIEW_EXTENSION.name,
+    vk::KHR_MAINTENANCE2_EXTENSION.name,
+];
 
 pub fn pick_physical_device(instance: &Instance, data: &mut AppData) -> Result<()> {
     unsafe {
         for physical_device in instance.enumerate_physical_devices()? {
-            let properties = instance.get_physical_device_properties(physical_device);
+            let mut properties = vk::PhysicalDeviceProperties2::default();
+            instance.get_physical_device_properties2(physical_device, &mut properties);
+
+            let properties = properties.properties;
 
             if let Err(error) = check_physical_device(instance, data, physical_device) {
                 warn!(
@@ -54,6 +63,10 @@ pub fn check_physical_device(
         return Err(anyhow!(SuitabilityError("No sampler anisotrophy.")));
     }
 
+    if features.sample_rate_shading != vk::TRUE {
+        return Err(anyhow!(SuitabilityError("No sample rate shading.")));
+    }
+
     Ok(())
 }
 
@@ -67,7 +80,14 @@ pub fn check_physical_device_extensions(
             .map(|e| e.extension_name)
             .collect::<HashSet<_>>();
 
-    if DEVICE_EXTENSIONS.iter().all(|e| extensions.contains(e)) {
+    if DEVICE_EXTENSIONS.iter().all(|e| {
+        if extensions.contains(e) {
+            true
+        } else {
+            error!("Failed to find {:?}", e);
+            false
+        }
+    }) {
         Ok(())
     } else {
         Err(anyhow!(SuitabilityError(
@@ -77,7 +97,15 @@ pub fn check_physical_device_extensions(
 }
 
 pub fn get_max_msaa_samples(instance: &Instance, data: &AppData) -> vk::SampleCountFlags {
-    let properties = unsafe { instance.get_physical_device_properties(data.physical_device) };
+    let mut properties = vk::PhysicalDeviceProperties2::default();
+
+    unsafe {
+        instance.get_physical_device_properties2(data.physical_device, &mut properties);
+    }
+
+    //let properties = unsafe { instance.get_physical_device_properties(data.physical_device) };
+    let properties = properties.properties;
+
     let counts = properties.limits.framebuffer_color_sample_counts
         & properties.limits.framebuffer_depth_sample_counts;
 

@@ -19,7 +19,7 @@ pub fn create_comparators(
                 .descriptor_pool(data.descriptor_pool)
                 .format(data.swapchain_format)
                 .extent(data.swapchain_extent)
-                .in_image_views(data.resolve_image_view)
+                .in_image_views([data.resolve_image_view, data.color_image_view[1]])
                 .out_image_view(*i)
                 .build()?;
 

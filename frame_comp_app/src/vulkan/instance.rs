@@ -9,13 +9,16 @@ use vulkanalia::vk::ExtDebugUtilsExtensionInstanceCommands;
 use vulkanalia::window as vk_window;
 use winit::window::Window;
 
+pub const INSTANCE_EXTENSIONS: &[vk::ExtensionName] =
+    &[vk::KHR_GET_PHYSICAL_DEVICE_PROPERTIES2_EXTENSION.name];
+
 pub fn create_instance(window: &Window, entry: &Entry, data: &mut AppData) -> Result<Instance> {
     let application_info = vk::ApplicationInfo::builder()
         .application_name(b"Vulkan Tutorial\0")
         .application_version(vk::make_version(1, 0, 0))
         .engine_name(b"No Engine\0")
-        .engine_version(vk::make_version(1, 0, 0))
-        .api_version(vk::make_version(1, 0, 0));
+        .engine_version(vk::make_version(1, 1, 0))
+        .api_version(vk::make_version(1, 2, 0));
 
     let available_layers = unsafe { entry.enumerate_instance_layer_properties() }?
         .iter()
@@ -46,16 +49,15 @@ pub fn create_instance(window: &Window, entry: &Entry, data: &mut AppData) -> Re
 
     let flags = if cfg!(target_os = "macos") && entry.version()? >= PORTABILITY_MACOS_VERSION {
         info!("Enabling extensions for macOS portability.");
-        extensions.push(
-            vk::KHR_GET_PHYSICAL_DEVICE_PROPERTIES2_EXTENSION
-                .name
-                .as_ptr(),
-        );
         extensions.push(vk::KHR_PORTABILITY_ENUMERATION_EXTENSION.name.as_ptr());
         vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR
     } else {
         vk::InstanceCreateFlags::empty()
     };
+
+    for extension in INSTANCE_EXTENSIONS {
+        extensions.push(extension.as_ptr());
+    }
 
     let mut info = vk::InstanceCreateInfo::builder()
         .application_info(&application_info)

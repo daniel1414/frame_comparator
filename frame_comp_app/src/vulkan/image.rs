@@ -539,6 +539,22 @@ pub fn create_texture_sampler(device: &Device, data: &mut AppData) -> Result<()>
 
     data.texture_sampler = unsafe { device.create_sampler(&info, None) }?;
 
+    // Create a separate texture sampler for the depth image sampling
+    let info = vk::SamplerCreateInfo::builder()
+        .mag_filter(vk::Filter::LINEAR)
+        .min_filter(vk::Filter::LINEAR)
+        .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+        .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+        .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+        .anisotropy_enable(false)
+        .border_color(vk::BorderColor::FLOAT_OPAQUE_WHITE)
+        .unnormalized_coordinates(false)
+        .compare_enable(false)
+        .mipmap_mode(vk::SamplerMipmapMode::NEAREST)
+        .build();
+
+    data.depth_sampler = unsafe { device.create_sampler(&info, None) }?;
+
     Ok(())
 }
 
@@ -555,7 +571,11 @@ pub fn create_color_objects(
         data.swapchain_extent.width,
         data.swapchain_extent.height,
         1,
-        data.msaa_samples,
+        if index == 0 {
+            data.msaa_samples
+        } else {
+            vk::SampleCountFlags::_1
+        },
         data.swapchain_format,
         vk::ImageTiling::OPTIMAL,
         vk::ImageUsageFlags::COLOR_ATTACHMENT
@@ -575,32 +595,34 @@ pub fn create_color_objects(
         1,
     )?;
 
-    // The resources for the resolve image
-    let (color_image, color_image_memory) = create_image(
-        instance,
-        device,
-        data,
-        data.swapchain_extent.width,
-        data.swapchain_extent.height,
-        1,
-        vk::SampleCountFlags::_1,
-        data.swapchain_format,
-        vk::ImageTiling::OPTIMAL,
-        vk::ImageUsageFlags::COLOR_ATTACHMENT // must be usable as a render target
+    if index == 0 {
+        // The resources for the resolve image
+        let (color_image, color_image_memory) = create_image(
+            instance,
+            device,
+            data,
+            data.swapchain_extent.width,
+            data.swapchain_extent.height,
+            1,
+            vk::SampleCountFlags::_1,
+            data.swapchain_format,
+            vk::ImageTiling::OPTIMAL,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT // must be usable as a render target
             | vk::ImageUsageFlags::SAMPLED, // The comparator will sample from it
-        vk::MemoryPropertyFlags::DEVICE_LOCAL,
-    )?;
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+        )?;
 
-    data.resolve_image[index] = color_image;
-    data.resolve_image_memory[index] = color_image_memory;
+        data.resolve_image = color_image;
+        data.resolve_image_memory = color_image_memory;
 
-    data.resolve_image_view[index] = create_image_view(
-        device,
-        color_image,
-        data.swapchain_format,
-        vk::ImageAspectFlags::COLOR,
-        1,
-    )?;
+        data.resolve_image_view = create_image_view(
+            device,
+            color_image,
+            data.swapchain_format,
+            vk::ImageAspectFlags::COLOR,
+            1,
+        )?;
+    }
 
     Ok(())
 }

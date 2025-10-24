@@ -101,30 +101,11 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
 
         // The order of clear values should be identical to the order of attachments.
         let clear_values = &[color_clear_value, depth_clear_value];
-        let left_render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-            .render_pass(data.render_pass[0])
-            .framebuffer(data.left_framebuffers[i])
+        let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
+            .render_pass(data.render_pass)
+            .framebuffer(data.framebuffers[i])
             .render_area(render_area)
             .clear_values(clear_values);
-
-        let right_render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-            .render_pass(data.render_pass[1])
-            .framebuffer(data.right_framebuffers[i])
-            .render_area(render_area)
-            .clear_values(clear_values);
-
-        let loop_data = &[
-            (
-                left_render_pass_begin_info,
-                data.left_pipeline_layout,
-                data.left_pipeline,
-            ),
-            (
-                right_render_pass_begin_info,
-                data.right_pipeline_layout,
-                data.right_pipeline,
-            ),
-        ];
 
         unsafe {
             device.begin_command_buffer(*command_buffer, &info)?;
@@ -137,35 +118,55 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
                 vk::IndexType::UINT32,
             );
 
-            for (render_pass_begin_info, pipeline_layout, pipeline) in loop_data {
-                // Render pass for the left half of the image.
-                device.cmd_begin_render_pass(
-                    *command_buffer,
-                    &render_pass_begin_info,
-                    vk::SubpassContents::INLINE,
-                );
+            // Render pass, subpass 0
+            device.cmd_begin_render_pass(
+                *command_buffer,
+                &render_pass_begin_info,
+                vk::SubpassContents::INLINE,
+            );
 
-                // The command buffer tracks state changes (e.g., pipeline bindings) and
-                // ensures dependencies are managed correctly.
-                // The pipeline is meant to operate on attachments and the render pass describes them
-                // so the pipeline needs to be bound only after the render pass begins.
-                device.cmd_bind_pipeline(
-                    *command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    *pipeline,
-                );
-                device.cmd_bind_descriptor_sets(
-                    *command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    *pipeline_layout,
-                    0,
-                    &[data.descriptor_sets[i]],
-                    &[],
-                );
+            // The command buffer tracks state changes (e.g., pipeline bindings) and
+            // ensures dependencies are managed correctly.
+            // The pipeline is meant to operate on attachments and the render pass describes them
+            // so the pipeline needs to be bound only after the render pass begins.
+            device.cmd_bind_pipeline(
+                *command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                data.first_pipeline,
+            );
 
-                device.cmd_draw_indexed(*command_buffer, data.indices.len() as u32, 1, 0, 0, 0);
-                device.cmd_end_render_pass(*command_buffer);
-            }
+            device.cmd_bind_descriptor_sets(
+                *command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                data.first_pipeline_layout,
+                0,
+                &[data.descriptor_sets[i]],
+                &[],
+            );
+
+            device.cmd_draw_indexed(*command_buffer, data.indices.len() as u32, 1, 0, 0, 0);
+
+            // Advance to the next subpass
+            device.cmd_next_subpass(*command_buffer, vk::SubpassContents::INLINE);
+
+            device.cmd_bind_pipeline(
+                *command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                data.second_pipeline,
+            );
+
+            device.cmd_bind_descriptor_sets(
+                *command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                data.second_pipeline_layout,
+                0,
+                &[data.second_descriptor_sets[i]],
+                &[],
+            );
+
+            device.cmd_draw(*command_buffer, 3, 1, 0, 0);
+
+            device.cmd_end_render_pass(*command_buffer);
 
             // Compare the outputs
             if let Some(comparators) = &data.frame_comparators {

@@ -11,7 +11,7 @@ mod vulkan;
 
 use anyhow::Result;
 use app::App;
-use winit::application::ApplicationHandler;
+use log::{error, info};
 use winit::dpi::LogicalSize;
 use winit::event::{MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -37,9 +37,8 @@ impl WindowApp {
     }
 }
 
-impl ApplicationHandler for WindowApp {
+impl winit::application::ApplicationHandler for WindowApp {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        println!("Window App resumed!");
         let window = event_loop
             .create_window(
                 Window::default_attributes()
@@ -51,7 +50,14 @@ impl ApplicationHandler for WindowApp {
             )
             .unwrap();
         if self.app.is_none() {
-            self.app = Some(App::create(&window).unwrap())
+            info!("Window resumed, creating application...");
+            match App::create(&window) {
+                Ok(app) => self.app = Some(app),
+                Err(e) => {
+                    error!("Failed to create application: {:?}", e);
+                    event_loop.exit();
+                }
+            }
         }
         self.window = Some(window);
     }
@@ -115,7 +121,10 @@ fn main() -> Result<()> {
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut window_app = WindowApp::new();
-    event_loop.run_app(&mut window_app)?;
+    if let Err(e) = event_loop.run_app(&mut window_app) {
+        error!("Application event loop returned an error: {:?}", e);
+        return Err(e.into());
+    }
 
     Ok(())
 }

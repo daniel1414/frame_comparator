@@ -9,18 +9,17 @@ pub fn create_depth_objects(
     instance: &Instance,
     device: &Device,
     data: &mut AppData,
-    index: usize,
 ) -> Result<()> {
     let format = get_depth_format(instance, data)?;
 
-    // The depth buffer is an image like the ones in the swapchain and texture.
+    // Depth buffer for multisampled color attachment
     let (depth_image, depth_image_memory) = create_image(
         instance,
         device,
         data,
         data.swapchain_extent.width,
         data.swapchain_extent.height,
-        1,
+        1, // mip levels
         data.msaa_samples,
         format,
         vk::ImageTiling::OPTIMAL,
@@ -28,10 +27,33 @@ pub fn create_depth_objects(
         vk::MemoryPropertyFlags::DEVICE_LOCAL,
     )?;
 
-    data.depth_image[index] = depth_image;
-    data.depth_image_memory[index] = depth_image_memory;
+    data.depth_msaa_image = depth_image;
+    data.depth_msaa_image_memory = depth_image_memory;
 
-    data.depth_image_view[index] =
+    data.depth_msaa_image_view =
+        create_image_view(device, depth_image, format, vk::ImageAspectFlags::DEPTH, 1)?;
+
+    // Depth attachment for the resolved depth that will serve as an input attachment
+    let (depth_image, depth_image_memory) = create_image(
+        instance,
+        device,
+        data,
+        data.swapchain_extent.width,
+        data.swapchain_extent.height,
+        1, // mip levels
+        vk::SampleCountFlags::_1,
+        // same depth format
+        format,
+        vk::ImageTiling::OPTIMAL,
+        vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT
+            | vk::ImageUsageFlags::SAMPLED
+            | vk::ImageUsageFlags::INPUT_ATTACHMENT,
+        vk::MemoryPropertyFlags::DEVICE_LOCAL,
+    )?;
+
+    data.depth_res_image = depth_image;
+    data.depth_res_image_memory = depth_image_memory;
+    data.depth_res_image_view =
         create_image_view(device, depth_image, format, vk::ImageAspectFlags::DEPTH, 1)?;
 
     Ok(())
