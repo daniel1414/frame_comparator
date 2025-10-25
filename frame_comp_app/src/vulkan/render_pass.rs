@@ -120,11 +120,14 @@ pub fn create_render_pass(
         .depth_stencil_resolve_attachment(&depth_resolve_attachment_ref)
         .build();
 
+    let color_attachments0 = [color_attachment_ref0];
+    let color_resolve_attachments0 = [color_resolve_attachment_ref0];
+
     let subpass0 = vk::SubpassDescription2::builder()
         .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-        .color_attachments(&[color_attachment_ref0])
+        .color_attachments(&color_attachments0)
         .depth_stencil_attachment(&depth_stencil_attachment_ref0)
-        .resolve_attachments(&[color_resolve_attachment_ref0])
+        .resolve_attachments(&color_resolve_attachments0)
         .push_next(&mut depth_stencil_resolve)
         .build();
 
@@ -138,12 +141,16 @@ pub fn create_render_pass(
     let depth_input_attachment_ref1 = vk::AttachmentReference2::builder()
         .attachment(3)
         .layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-        .aspect_mask(vk::ImageAspectFlags::DEPTH);
+        .aspect_mask(vk::ImageAspectFlags::DEPTH)
+        .build();
+
+    let color_attachments1 = [color_attachment_ref1];
+    let input_attachments1 = [depth_input_attachment_ref1];
 
     let subpass1 = vk::SubpassDescription2::builder()
         .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-        .color_attachments(&[color_attachment_ref1])
-        .input_attachments(&[depth_input_attachment_ref1])
+        .color_attachments(&color_attachments1)
+        .input_attachments(&input_attachments1)
         .build();
 
     // === DEPENDENCIES ===

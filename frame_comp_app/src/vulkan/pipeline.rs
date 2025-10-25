@@ -35,22 +35,26 @@ pub fn create_first_pipeline(
     let vert_stage = vk::PipelineShaderStageCreateInfo::builder()
         .stage(vk::ShaderStageFlags::VERTEX)
         .module(vert_module)
-        .name(b"main\0");
+        .name(b"main\0")
+        .build();
 
     let frag_stage = vk::PipelineShaderStageCreateInfo::builder()
         .stage(vk::ShaderStageFlags::FRAGMENT)
         .module(frag_module)
-        .name(b"main\0");
+        .name(b"main\0")
+        .build();
 
     let binding_descriptions = &[Vertex::binding_description()];
     let attribute_descriptions = Vertex::attribute_descriptions();
     let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::builder()
         .vertex_binding_descriptions(binding_descriptions)
-        .vertex_attribute_descriptions(&attribute_descriptions);
+        .vertex_attribute_descriptions(&attribute_descriptions)
+        .build();
 
     let input_assembly_state = vk::PipelineInputAssemblyStateCreateInfo::builder()
         .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
-        .primitive_restart_enable(false);
+        .primitive_restart_enable(false)
+        .build();
 
     // Area of the framebuffer to render to. In our case the whole area.
     let viewport = vk::Viewport::builder()
@@ -59,7 +63,8 @@ pub fn create_first_pipeline(
         .width(data.swapchain_extent.width as f32)
         .height(data.swapchain_extent.height as f32)
         .min_depth(0.0)
-        .max_depth(1.0);
+        .max_depth(1.0)
+        .build();
 
     // Area of the framebuffer that fragments are allowed to affect. In our case the whole area.
     let scissor = vk::Rect2D::builder()
@@ -113,7 +118,9 @@ pub fn create_first_pipeline(
     //    by the shaders.
     // 2. Push constants: Small amounts of data sent to shaders for per-draw customization.
     let set_layouts = &[data.descriptor_set_layout];
-    let layout_info = vk::PipelineLayoutCreateInfo::builder().set_layouts(set_layouts);
+    let layout_info = vk::PipelineLayoutCreateInfo::builder()
+        .set_layouts(set_layouts)
+        .build();
 
     let pipeline_layout = unsafe { device.create_pipeline_layout(&layout_info, None) }?;
 
@@ -256,7 +263,9 @@ pub fn create_second_pipeline(
     //    by the shaders.
     // 2. Push constants: Small amounts of data sent to shaders for per-draw customization.
     let set_layouts = &[data.second_descriptor_set_layout];
-    let layout_info = vk::PipelineLayoutCreateInfo::builder().set_layouts(set_layouts);
+    let layout_info = vk::PipelineLayoutCreateInfo::builder()
+        .set_layouts(set_layouts)
+        .build();
 
     let pipeline_layout = unsafe { device.create_pipeline_layout(&layout_info, None) }?;
 

@@ -40,7 +40,7 @@ use crate::vulkan::synchronization::create_sync_objects;
 use crate::vulkan::vertex::Vertex;
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 3;
-pub const VALIDATION_ENABLED: bool = cfg!(debug_assertions);
+pub const VALIDATION_ENABLED: bool = true; //cfg!(debug_assertions);
 pub const VALIDATION_LAYER: vk::ExtensionName =
     vk::ExtensionName::from_bytes(b"VK_LAYER_KHRONOS_validation");
 pub const PORTABILITY_MACOS_VERSION: Version = Version::new(1, 3, 216);
