@@ -1,5 +1,5 @@
 use anyhow::Result;
-use frame_comp::FrameComparator;
+use rtcmp::RenderTargetComparator;
 use vulkanalia::prelude::v1_3::*;
 
 use crate::app::{AppData, MAX_FRAMES_IN_FLIGHT};
@@ -94,7 +94,7 @@ pub fn create_descriptor_pool(device: &Device, data: &mut AppData) -> Result<()>
         .descriptor_count(
             // One descriptor per image view per swapchain image + the amout the frame comparator consumes.
             data.swapchain_images.len() as u32 * 4
-                + FrameComparator::image_sampler_count() * MAX_FRAMES_IN_FLIGHT as u32,
+                + RenderTargetComparator::image_sampler_count() * MAX_FRAMES_IN_FLIGHT as u32,
         );
 
     let pool_sizes = &[ubo_size, sampler_size];

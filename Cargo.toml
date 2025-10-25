@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "frame_comp",
+    "rtcmp",
     "frame_comp_app"
 ]
 resolver = "3"

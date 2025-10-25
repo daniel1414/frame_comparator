@@ -567,27 +567,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa9a19cbb55df58761df49b23516a86d432839add4af60fc256da840f66ed35b"
 
 [[package]]
-name = "frame_comp"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytemuck",
- "cgmath",
- "derive_builder",
- "vulkanalia",
-]
-
-[[package]]
 name = "frame_comp_app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "cgmath",
- "frame_comp",
  "lazy_static",
  "log",
  "png",
  "pretty_env_logger",
+ "rtcmp",
  "thiserror 2.0.17",
  "tobj",
  "vulkanalia",
@@ -1275,6 +1264,17 @@ name = "regex-syntax"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
+
+[[package]]
+name = "rtcmp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "cgmath",
+ "derive_builder",
+ "vulkanalia",
+]
 
 [[package]]
 name = "rustix"

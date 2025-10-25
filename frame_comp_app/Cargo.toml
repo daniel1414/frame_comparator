@@ -13,5 +13,5 @@ thiserror = "2.0.17"
 tobj = { version = "4.0.3", features = ["log"] }
 vulkanalia = { version = "0.31.0", features = ["libloading", "provisional", "window"]}
 winit = "0.30.12"
-frame_comp = { path = "../frame_comp" }
+rtcmp = { path = "../rtcmp" }
 lazy_static = "1.5.0"

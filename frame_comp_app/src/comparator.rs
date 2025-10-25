@@ -2,14 +2,14 @@ use std::rc::Rc;
 use vulkanalia::prelude::v1_3::*;
 
 use anyhow::Result;
-use frame_comp::{FrameComparator, FrameComparatorCreateInfo};
+use rtcmp::{RenderTargetComparator, RenderTargetComparatorCreateInfo};
 
 use crate::app::AppData;
 
 pub fn create_comparators(
     device: &Rc<Device>,
     data: &AppData,
-) -> Result<Option<Vec<FrameComparator>>> {
+) -> Result<Option<Vec<RenderTargetComparator>>> {
     /* let viewport = vk::Viewport::builder()
     .x((data.swapchain_extent.width / 10 * 7) as f32)
     .y((data.swapchain_extent.height / 10) as f32)
@@ -27,7 +27,7 @@ pub fn create_comparators(
         .swapchain_image_views
         .iter()
         .map(|i| {
-            let info = FrameComparatorCreateInfo::builder()
+            let info = RenderTargetComparatorCreateInfo::builder()
                 .device(Rc::clone(device))
                 .descriptor_pool(data.descriptor_pool)
                 .format(data.swapchain_format)
@@ -37,7 +37,7 @@ pub fn create_comparators(
                 .out_image_view(*i)
                 .build()?;
 
-            FrameComparator::new(&info)
+            RenderTargetComparator::new(&info)
         })
         .collect::<Result<Vec<_>, _>>()?;
 

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use vulkanalia::prelude::v1_3::*;
 
-use frame_comp::FrameCompareInfo;
+use rtcmp::CompareInfo;
 
 use crate::app::AppData;
 
@@ -170,7 +170,7 @@ pub fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()>
 
             // Compare the outputs
             if let Some(comparators) = &data.frame_comparators {
-                let compare_info = FrameCompareInfo::builder()
+                let compare_info = CompareInfo::builder()
                     .command_buffer(*command_buffer)
                     .divider_position(data.vbar_percentage)
                     .build()?;

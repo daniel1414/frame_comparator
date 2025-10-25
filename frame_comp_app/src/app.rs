@@ -5,7 +5,7 @@ use std::u64;
 
 use anyhow::{Result, anyhow};
 use cgmath::{Deg, point3, vec3};
-use frame_comp::FrameComparator;
+use rtcmp::RenderTargetComparator;
 use std::time::Instant;
 use vk::{KhrSurfaceExtensionInstanceCommands, KhrSwapchainExtensionDeviceCommands};
 use vulkanalia::loader::{LIBRARY, LibloadingLoader};
@@ -615,6 +615,6 @@ pub struct AppData {
     pub vbar_percentage: f32,
 
     // Frame comparator
-    pub frame_comparators: Option<Vec<FrameComparator>>,
+    pub frame_comparators: Option<Vec<RenderTargetComparator>>,
     pub frame_comp_viewport: vk::Viewport,
 }

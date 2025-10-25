@@ -1,0 +1,3 @@
+[submodule "rtcmp"]
+	path = rtcmp
+	url = git@github.com:daniel1414/rtcmp.git
