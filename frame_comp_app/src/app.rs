@@ -426,7 +426,7 @@ impl App {
     fn update_uniform_buffer(&self, image_index: usize) -> Result<()> {
         let time = self.start.elapsed().as_secs_f32();
 
-        let model = Mat4::from_axis_angle(vec3(0.0, 0.0, 1.0), Deg(45.0) /*  * time */);
+        let model = Mat4::from_axis_angle(vec3(0.0, 0.0, 1.0), Deg(45.0) * time);
 
         let view = Mat4::look_at_rh(
             point3(0.0, 2.5, 2.5),
@@ -501,6 +501,15 @@ impl App {
     pub(crate) fn update(&mut self, window: &Window, mouse_x: f64, mouse_left_pressed: bool) {
         let window_size = window.inner_size();
         let margin = 10.0;
+        /* let mouse_in_viewport = mouse_x > (window_size.width as f64 / 10f64 * 7f64)
+            && mouse_x < (window_size.width as f64 / 10f64 * 9f64);
+
+        if mouse_left_pressed && mouse_in_viewport {
+            self.data.vbar_percentage = ((mouse_x - window_size.width as f64 / 10f64 * 7f64)
+                / (window_size.width as f64 / 10f64 * 2f64))
+                as f32;
+            self.resized = true;
+        } */
         if mouse_left_pressed && mouse_x < window_size.width as f64 - 10.0 && mouse_x > 10.0 {
             self.data.vbar_percentage = mouse_x as f32 / window_size.width as f32;
             self.resized = true;
@@ -607,4 +616,5 @@ pub struct AppData {
 
     // Frame comparator
     pub frame_comparators: Option<Vec<FrameComparator>>,
+    pub frame_comp_viewport: vk::Viewport,
 }
